@@ -5,9 +5,9 @@ numpy==1.24.2
 Mosek==10.0.40
 cvxpygen==0.2.3
 matplotlib==3.7.1
-panda_gym==3.0.7
 gymnasium==0.29.0
 ipympl
 pydantic
 do-mpc
 onnx
+git+https://github.com/vateseif/Safe-panda-gym.git@safe_rl-panda-gym
