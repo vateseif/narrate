@@ -17,7 +17,7 @@ class Sim:
     # robot
     self.robot = BaseRobot()
     # env
-    self.env = gym.make("PandaBuildL-v2", render=True)
+    self.env = gym.make("PandaCubes-v2", render=True)
     self.observation = self.env.reset()
 
   def reset(self):
