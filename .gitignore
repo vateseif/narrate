@@ -149,3 +149,6 @@ deletable.*
 
 keys/
 *.key
+
+# Mac stuff
+*.DS_Store
