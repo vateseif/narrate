@@ -66,8 +66,9 @@ class BaseRobotConfig(AbstractRobotConfig):
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
-  env_name: str = "Cubes" # [Cubes, CleanPlate, Sponge, MoveTable]
   render: bool = True
+  env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  mock_plan: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
 
 BaseLLMConfigs = {
   "plan_objective": ObjectivePlanLLMConfig,
