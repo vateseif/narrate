@@ -114,6 +114,7 @@ class AbstractRobot(ObjBase):
 
 class AbstractSimulation(ObjBase):
   def __init__(self, cfg: AbstractSimulaitonConfig) -> None:
+    self.cfg = cfg
     # init robots
     self.robot: AbstractRobot # TODO: account for multiple robots
     # init env

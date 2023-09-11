@@ -1,11 +1,11 @@
 import threading
 from time import sleep
+from typing import Optional
 
 from llm import Plan
 from robot import BaseRobot
 from core import AbstractSimulation
 from config.config import SimulationConfig
-
 from mocks.mocks import nmpcMockOptions # TODO
 
 
@@ -26,22 +26,19 @@ class Simulation(AbstractSimulation):
     # count number of tasks solved from a plan 
     self.task_counter = 0
 
-  def create_plan(self, user_task:str, solve=False): 
-    #self.plan: Plan = self.robot.create_plan(user_task)
-    self.plan: Plan = nmpcMockOptions[self.robot.cfg.controller_type]
-    #sleep(5)
+  def create_plan(self, user_task:str, wait_s:Optional[int]=None): 
+    self.plan = self.robot.create_plan(user_task) if self.cfg.mock_plan is None else nmpcMockOptions[self.cfg.mock_plan]
     print(f"\33[92m {self.plan.tasks} \033[0m \n")
-    if solve:
+    if wait_s is not None:
       for _ in self.plan.tasks:
         self.next_task()
-        sleep(5)
+        sleep(wait_s)
 
   def step(self):
     # update controller (i.e. set the current gripper position)
     self.robot.set_x0(self.observation["robot_0"][:3])
     # compute action
     action = [self.robot.step()] # TODO: this is a list because the env may have multiple robots
-    #print(action)
     # apply action
     self.observation, _, done, _ = self.env.step(action)
 
