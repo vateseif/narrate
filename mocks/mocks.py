@@ -61,5 +61,7 @@ objective_mock_plan = Plan(tasks=[
 
 nmpcMockOptions = {
   "nmpc_objective": objective_mock_plan,
-  "nmpc_optimization": optimization_mock_plan_stack,
+  "stack": optimization_mock_plan_stack,
+  "pyramid": optimization_mock_plan_pyramid,
+  "L": optimization_mock_plan_L
 }
