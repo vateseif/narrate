@@ -1,4 +1,4 @@
-from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig
+from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from prompts.stack import *
 
 
@@ -63,6 +63,11 @@ class BaseRobotConfig(AbstractRobotConfig):
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
   controller_type: str = "nmpc_optimization"  # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 15
+
+
+class SimulationConfig(AbstractSimulaitonConfig):
+  env_name: str = "Cubes" # [Cubes, CleanPlate, Sponge, MoveTable]
+  render: bool = True
 
 BaseLLMConfigs = {
   "plan_objective": ObjectivePlanLLMConfig,

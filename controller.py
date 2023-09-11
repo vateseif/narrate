@@ -3,9 +3,8 @@ import do_mpc
 import cvxpy as cp
 import numpy as np
 import casadi as ca
-from typing import Tuple, List, Optional
+from typing import Dict, List, Tuple, Optional
 
-from time import time
 
 from core import AbstractController
 from llm import Objective, Optimization
@@ -136,6 +135,9 @@ class BaseNMPC(AbstractController):
     # init do_mpc problem
     self.init_controller()
 
+    # init variables for python evaluation
+    self.eval_variables = {"ca":ca, "cp":cp, "np":np} # python packages
+
   def init_dynamics(self):
     # inti do_mpc model
     self.model = do_mpc.model.Model(self.cfg.model_type) # TODO: add model_type to cfg
@@ -213,20 +215,13 @@ class BaseNMPC(AbstractController):
     return  
 
 
-  def _eval(self, code_str: str, x_cubes: Tuple[np.ndarray], x_offset=0):
-    #TODO this is hard coded for when there are 4 cubes
-    #if x_offset!=0: x_offset+=0.01
-    cube_1, cube_2, cube_3, cube_4 = x_cubes
-    evaluated_code = eval(code_str, {
-      "ca": ca,
-      "cp": cp,
-      "np": np,
-      "x": self.x + np.array([0., x_offset, 0.]),
-      "cube_1": cube_1,
-      "cube_2": cube_2,
-      "cube_3": cube_3,
-      "cube_4": cube_4
-    })
+  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], x_offset=0):
+    #TODO the offset is still harcoded
+    # put together variables for python code evaluation:
+    # python packages | robot state (gripper) | environment observations
+    eval_variables = self.eval_variables | {"x": self.x + np.array([0., x_offset, 0.])} | observation
+    # evaluate code
+    evaluated_code = eval(code_str, eval_variables)
     return evaluated_code
 
   def _solve(self):
@@ -242,11 +237,11 @@ class BaseNMPC(AbstractController):
   
 class ObjectiveNMPC(BaseNMPC):
 
-  def apply_gpt_message(self, objective: Objective, x_cubes: Tuple[np.ndarray]) -> None:
+  def apply_gpt_message(self, objective: Objective, observation: Dict[str, np.ndarray]) -> None:
     # init mpc newly
     self.init_mpc()
     # apply constraint function
-    self.set_objective(self._eval(objective.objective, x_cubes))
+    self.set_objective(self._eval(objective.objective, observation))
     # set base constraint functions
     self.set_constraints()
     # setup
@@ -256,15 +251,15 @@ class ObjectiveNMPC(BaseNMPC):
 
 class OptimizationNMPC(BaseNMPC):
 
-  def apply_gpt_message(self, optimization: Optimization, x_cubes: Tuple[np.ndarray]) -> None:
+  def apply_gpt_message(self, optimization: Optimization, observation: Dict[str, np.ndarray]) -> None:
     # init mpc newly
     self.init_mpc()
     # apply constraint function
-    self.set_objective(self._eval(optimization.objective, x_cubes))
+    self.set_objective(self._eval(optimization.objective, observation))
     # set base constraint functions
     n_const = len(optimization.constraints)
     fingers = [-0.048, 0.048]
-    self.set_constraints([self._eval(c, x_cubes, x_offset=fingers[int(i<n_const)]) for i, c in enumerate(2*optimization.constraints)])
+    self.set_constraints([self._eval(c, observation, x_offset=fingers[int(i<n_const)]) for i, c in enumerate(2*optimization.constraints)])
     # setup
     self.mpc.setup()
     self.mpc.set_initial_guess()

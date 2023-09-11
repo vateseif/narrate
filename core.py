@@ -1,11 +1,15 @@
 import os
 import inspect
-import numpy as np
+from typing import List
 from abc import abstractmethod
+
+import gym
+import panda_gym
+import numpy as np
 from langchain.chat_models import ChatOpenAI
 
 # GPT4 api key
-os.environ["OPENAI_API_KEY"] = open(os.path.dirname(__file__) + '/keys/gpt_seamless.key', 'r').readline().rstrip()
+os.environ["OPENAI_API_KEY"] = open(os.path.dirname(__file__) + '/keys/gpt4.key', 'r').readline().rstrip()
 
 
 class AbstractLLMConfig:
@@ -26,6 +30,9 @@ class AbstractRobotConfig:
   name: str
   controller_type: str
 
+class AbstractSimulaitonConfig:
+  env_name: str
+  render: bool
 
 class ObjBase:
   '''
@@ -103,3 +110,37 @@ class AbstractRobot(ObjBase):
     self.reset_gpt()
     self.reset_controller(x0)
     return
+
+
+class AbstractSimulation(ObjBase):
+  def __init__(self, cfg: AbstractSimulaitonConfig) -> None:
+    # init robots
+    self.robot: AbstractRobot # TODO: account for multiple robots
+    # init env
+    self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
+    # count number of tasks solved from a plan 
+    self.task_counter = 0
+
+  def reset(self):
+    """ Reset environment """
+    pass
+
+  def create_plan(self):
+    """ Triggers the Task Planner to generate a plan of subtasks"""
+    pass
+
+  def next_task(self):
+    """ Tasks the Optimization Designer to carry out the next task in the plam"""
+    pass
+
+  def _solve_task(self):
+    """ Applies the optimization designed by the Optimization Designer"""
+    pass    
+
+  def _run(self):
+    """ Start the simulation """
+    pass
+
+  def run(self):
+    """ Executes self._run() in a separate thread"""
+    pass

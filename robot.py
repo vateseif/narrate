@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Tuple
+from typing import Dict
 from llm import BaseLLM
 from core import AbstractRobot
 from config.config import BaseRobotConfig, BaseLLMConfigs
@@ -33,7 +33,7 @@ class BaseRobot(AbstractRobot):
     plan = self.TP.run(user_task)
     return plan # TODO: plan.tasks is hardcoded here
 
-  def next_plan(self, plan:str, x_cubes: Tuple[np.ndarray]):
+  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]):
     # print plan
     print(f"\033[91m Task: {plan} \033[0m ")
     # if custom function is called apply that
@@ -48,7 +48,7 @@ class BaseRobot(AbstractRobot):
     # design optimization functions
     optimization = self.OD.run(plan)
     # apply optimization functions to MPC
-    self.MPC.apply_gpt_message(optimization, x_cubes)
+    self.MPC.apply_gpt_message(optimization, observation)
     return
 
 
