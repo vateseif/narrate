@@ -3,6 +3,7 @@ import do_mpc
 import cvxpy as cp
 import numpy as np
 import casadi as ca
+from itertools import chain
 from typing import Dict, List, Tuple, Optional
 
 
@@ -215,11 +216,11 @@ class BaseNMPC(AbstractController):
     return  
 
 
-  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], x_offset=0):
+  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=0):
     #TODO the offset is still harcoded
     # put together variables for python code evaluation:
     # python packages | robot state (gripper) | environment observations
-    eval_variables = self.eval_variables | {"x": self.x + np.array([0., x_offset, 0.])} | observation
+    eval_variables = self.eval_variables | {"x": self.x + offset} | observation
     # evaluate code
     evaluated_code = eval(code_str, eval_variables)
     return evaluated_code
@@ -257,9 +258,9 @@ class OptimizationNMPC(BaseNMPC):
     # apply constraint function
     self.set_objective(self._eval(optimization.objective, observation))
     # set base constraint functions
-    n_const = len(optimization.constraints)
-    fingers = [-0.048, 0.048]
-    self.set_constraints([self._eval(c, observation, x_offset=fingers[int(i<n_const)]) for i, c in enumerate(2*optimization.constraints)])
+    gripper_offsets = [np.array([0., -0.048, 0.]), np.array([0., 0.048, 0.]), np.array([0., 0., 0.048])]
+    constraints = [[*map(lambda x: self._eval(c, observation, x), gripper_offsets)] for c in optimization.constraints]
+    self.set_constraints(list(chain(*constraints)))
     # setup
     self.mpc.setup()
     self.mpc.set_initial_guess()
