@@ -1,129 +1,16 @@
-import torch
 import do_mpc
-import cvxpy as cp
 import numpy as np
 import casadi as ca
+from time import sleep
 from itertools import chain
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 
 from core import AbstractController
 from llm import Objective, Optimization
-from config.config import BaseControllerConfig, BaseNMPCConfig
+from config.config import BaseNMPCConfig
 
 
-class BaseController(AbstractController):
-
-  def __init__(self, cfg=BaseControllerConfig()) -> None:
-    super().__init__(cfg)
-    # init linear dynamics
-    self.init_dynamics()
-    # init CVXPY problem
-    self.init_problem()
-
-  def init_dynamics(self):
-    # dynamics
-    self.A = np.zeros((self.cfg.nx, self.cfg.nx))
-    self.B = np.eye(self.cfg.nx)
-    self.Ad = np.eye(self.cfg.nx) + self.A * self.cfg.dt
-    self.Bd = self.B * self.cfg.dt
-
-  def init_problem(self):
-    # variables
-    self.x = cp.Variable((self.cfg.T+1, self.cfg.nx), name='x')
-    self.u = cp.Variable((self.cfg.T, self.cfg.nu), name='u')
-    # parameters
-    self.x0 = cp.Parameter(self.cfg.nx, name="x0")
-    self.xd = cp.Parameter(self.cfg.nx, name="xd")
-    self.x0.value = np.zeros((self.cfg.nx,))
-    self.xd.value = np.zeros((self.cfg.nx,))
-    # cost
-    self.xd_cost_T = sum([cp.norm(xt - self.xd) for xt in self.x])
-    self.obj = cp.Minimize(self.xd_cost_T)
-    # constraints
-    self.cvx_constraints = self.init_cvx_constraints()
-    # put toghether nominal MPC problem
-    self.prob = cp.Problem(self.obj, self.cvx_constraints)
-
-  def init_cvx_constraints(self):
-    constraints = []
-    # upper and lower bounds
-    constraints += [self.u <= self.cfg.hu*np.ones((self.cfg.T, self.cfg.nu))]
-    constraints += [self.u >= self.cfg.lu*np.ones((self.cfg.T, self.cfg.nu))]
-    # initial cond
-    constraints += [self.x[0] == self.x0]
-    # dynamics
-    for t in range(self.cfg.T):
-      constraints += [self.x[t+1] == self.Ad @ self.x[t] + self.Bd @ self.u[t]]
-    # bouns on state (gripper always above table)
-    for t in range(self.cfg.T+1):
-      constraints += [self.x[t][2] >= 0]
-    return constraints
-
-  def set_x0(self, x0: np.ndarray):
-    self.x0.value = x0
-    return
-
-  def reset(self, x0: np.ndarray) -> None:
-    self.init_problem()
-    self.set_x0(x0)
-    self.xd.value = x0
-    return
-
-  def _eval(self, code_str: str, x_cubes: Tuple[np.ndarray]):
-    #TODO this is hard coded for when there are 4 cubes
-    cube_1, cube_2, cube_3, cube_4 = x_cubes
-    evaluated_code = eval(code_str, {
-      "cp": cp,
-      "np": np,
-      "self": self,
-      "cube_1": cube_1,
-      "cube_2": cube_2,
-      "cube_3": cube_3,
-      "cube_4": cube_4
-    })
-    return evaluated_code
-
-  def _solve(self):
-    # solve for either uncostrained problem or for initial guess
-    self.prob.solve(solver='MOSEK')
-    return self.u.value[0]
-  
-  def step(self):
-    return self._solve()
-
-
-
-class ParametrizedRewardController(BaseController):
-
-  def apply_gpt_message(self, gpt_message:str, x_cubes: Tuple[np.ndarray]):
-    cube_1, cube_2, cube_3, cube_4 = x_cubes
-    self.xd.value = eval(gpt_message)
-
-
-class ObjectiveController(BaseController):
-
-  def apply_gpt_message(self, objective: Objective, x_cubes: Tuple[np.ndarray]) -> None:
-    # apply objective function
-    obj = self._eval(objective.objective, x_cubes)
-    self.obj = cp.Minimize(obj)
-    # create new MPC problem
-    self.prob = cp.Problem(self.obj, self.cvx_constraints)
-    return 
-
-class OptimizationController(BaseController):
-
-  def apply_gpt_message(self, optimization: Optimization, x_cubes: Tuple[np.ndarray]) -> None:    
-    # apply objective function
-    obj = self._eval(optimization.objective, x_cubes)
-    self.obj = cp.Minimize(obj)
-    # apply constraints
-    constraints = self.cvx_constraints
-    for constraint in optimization.constraints:
-      constraints += self._eval(constraint, x_cubes)
-    # create new MPC problem
-    self.prob = cp.Problem(self.obj, self.cvx_constraints)
-    return 
 
 class BaseNMPC(AbstractController):
   def __init__(self, cfg=BaseNMPCConfig()) -> None:
@@ -137,20 +24,30 @@ class BaseNMPC(AbstractController):
     self.init_controller()
 
     # init variables for python evaluation
-    self.eval_variables = {"ca":ca, "cp":cp, "np":np} # python packages
+    self.eval_variables = {"ca":ca, "np":np} # python packages
+
+    # gripper fingers offset for constraints 
+    self.gripper_offsets = [np.array([0., -0.048, 0.]), np.array([0., 0.048, 0.]), np.array([0., 0., 0.048])]
 
   def init_dynamics(self):
     # inti do_mpc model
     self.model = do_mpc.model.Model(self.cfg.model_type) # TODO: add model_type to cfg
     # position (x, y, z)
     self.x = self.model.set_variable(var_type='_x', var_name='x', shape=(self.cfg.nx,1))
+    # pose (z axis)
+    self.psi = self.model.set_variable(var_type='_x', var_name='psi', shape=(1,1))
     # velocity (dx, dy, dz)
     self.dx = self.model.set_variable(var_type='_x', var_name='dx', shape=(self.cfg.nx,1))
+    # pose velocity
+    self.dpsi = self.model.set_variable(var_type='_x', var_name='dpsi', shape=(1,1))
     # controls (u1, u2, u3)
     self.u = self.model.set_variable(var_type='_u', var_name='u', shape=(self.cfg.nu,1))
+    self.u_psi = self.model.set_variable(var_type='_u', var_name='u_psi', shape=(1,1))
     # system dynamics
     self.model.set_rhs('x', self.x + self.dx * self.cfg.dt)
+    self.model.set_rhs('psi', self.psi + self.dpsi * self.cfg.dt)
     self.model.set_rhs('dx', self.u)
+    self.model.set_rhs('dpsi', self.u_psi)
     # setup model
     self.model.setup()
     return
@@ -162,17 +59,21 @@ class BaseNMPC(AbstractController):
     # state objective
     self.mpc.set_objective(mterm=mterm, lterm=lterm)
     # input objective
-    self.mpc.set_rterm(u=2)
-
+    self.mpc.set_rterm(u=1, u_psi=1e-4)
+    #self.mpc.set_rterm(u=1)
     return
 
   def set_constraints(self, nlp_constraints: Optional[List[ca.SX]] = None):
 
     # base constraints (state)
     self.mpc.bounds['lower','_x', 'x'] = np.array([-100, -100, 0.0]) # stay above table
+    self.mpc.bounds['upper','_x', 'psi'] = np.pi/2 * np.ones((1, 1))   # rotation upper bound
+    self.mpc.bounds['lower','_x', 'psi'] = -np.pi/2 * np.ones((1, 1))  # rotation lower bound
     # base constraints (input)
     self.mpc.bounds['upper','_u', 'u'] = self.cfg.hu * np.ones((self.cfg.nu, 1))  # input upper bound
     self.mpc.bounds['lower','_u', 'u'] = self.cfg.lu * np.ones((self.cfg.nu, 1))  # input lower bound
+    self.mpc.bounds['upper','_u', 'u_psi'] = np.pi * np.ones((1, 1))   # input upper bound
+    self.mpc.bounds['lower','_u', 'u_psi'] = -np.pi * np.ones((1, 1))  # input lower bound
 
     if nlp_constraints == None: 
       return
@@ -206,7 +107,7 @@ class BaseNMPC(AbstractController):
     
 
   def set_x0(self, x0: np.ndarray):
-    self.mpc.x0 = np.concatenate((x0, np.zeros(3))) # concatenate velocity      
+    self.mpc.x0 = np.concatenate((x0, np.zeros(1))) # TODO: 0 is dpsi hard-coded   
 
   def reset(self, x0: np.ndarray) -> None:
     # TODO
@@ -216,23 +117,32 @@ class BaseNMPC(AbstractController):
     return  
 
 
-  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=0):
+  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=np.zeros(3)):
     #TODO the offset is still harcoded
+    # rotation matrix around z axis
+    R = np.array([
+      [ca.cos(self.psi), -ca.sin(self.psi), 0],
+      [ca.sin(self.psi), ca.cos(self.psi), 0],
+      [0, 0, 1]
+    ])
     # put together variables for python code evaluation:
     # python packages | robot state (gripper) | environment observations
-    eval_variables = self.eval_variables | {"x": self.x + offset} | observation
+    eval_variables = self.eval_variables | {"x": self.x + R@offset} | observation
     # evaluate code
     evaluated_code = eval(code_str, eval_variables)
     return evaluated_code
 
   def _solve(self):
     # solve mpc at state x0
-    u0 = self.mpc.make_step(self.mpc.x0)
-    return u0.squeeze()
+    u0 = self.mpc.make_step(self.mpc.x0).squeeze()
+    ee_displacement = u0[:3]
+    psi_rotation = u0[-1]
+    return np.concatenate((ee_displacement, np.array([0., 0., psi_rotation])))
 
   def step(self):
     if not self.mpc.flags['setup']:
-      return np.zeros(self.cfg.nu)
+      #sleep(1)
+      return np.array([0., 0., 0., 0., 0., 0.]) # TODO change
     return self._solve()
 
   
@@ -256,10 +166,10 @@ class OptimizationNMPC(BaseNMPC):
     # init mpc newly
     self.init_mpc()
     # apply constraint function
-    self.set_objective(self._eval(optimization.objective, observation))
+    regulatization = 1e-6 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
+    self.set_objective(self._eval(optimization.objective, observation) + regulatization)
     # set base constraint functions
-    gripper_offsets = [np.array([0., -0.048, 0.]), np.array([0., 0.048, 0.]), np.array([0., 0., 0.048])]
-    constraints = [[*map(lambda x: self._eval(c, observation, x), gripper_offsets)] for c in optimization.constraints]
+    constraints = [[*map(lambda x: self._eval(c, observation, x), self.gripper_offsets)] for c in optimization.constraints]
     self.set_constraints(list(chain(*constraints)))
     # setup
     self.mpc.setup()
@@ -267,9 +177,6 @@ class OptimizationNMPC(BaseNMPC):
     return 
 
 ControllerOptions = {
-  "parametrized": ParametrizedRewardController,
-  "objective": ObjectiveController,
-  "optimization": OptimizationController,
   "nmpc_objective": ObjectiveNMPC,
   "nmpc_optimization": OptimizationNMPC
 }
