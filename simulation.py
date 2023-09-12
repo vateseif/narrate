@@ -22,11 +22,13 @@ class Simulation(AbstractSimulation):
     self.robot = BaseRobot()
     # count number of tasks solved from a plan 
     self.task_counter = 0
+    # bool for stopping simulation
+    self.stop_thread = False
     # init list of RGB frames if wanna save video
     if self.cfg.save_video:
       self.frames_list = []
-      self.video_name = f"{self.cfg.env_name}_{self.cfg.mock_plan}_{datetime.now().strftime('%d/%m/%Y_%H:%M:%S')}"
-      self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}")
+      self.video_name = f"{self.cfg.env_name}_{self.cfg.mock_plan}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
+      self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
 
   def _reinit_robot(self):
     # x0 = [x, y, z, psi, dx, dy, dz]
@@ -71,7 +73,9 @@ class Simulation(AbstractSimulation):
 
   def close(self):
     # close environment
-    self.env.close()
+    #self.thread.join()
+    self.stop_thread = True
+    self.thread.join()
     # init list of RGB frames if wanna save video
     if self.cfg.save_video:
       self._save_video()
@@ -102,7 +106,7 @@ class Simulation(AbstractSimulation):
 
   def _run(self):
     self.reset()
-    while True:
+    while not self.stop_thread:
       # step env
       done = self.step()
       sleep(0.1)
@@ -113,7 +117,7 @@ class Simulation(AbstractSimulation):
 
   def run(self):
     """ Executes self._run() in a separate thread"""
-    thread = threading.Thread(target=self._run)
-    thread.daemon = True  # Set the thread as a daemon (will exit when the main program ends)
-    thread.start()
+    self.thread = threading.Thread(target=self._run)
+    self.thread.daemon = True  # Set the thread as a daemon (will exit when the main program ends)
+    self.thread.start()
     return
