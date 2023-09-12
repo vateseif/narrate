@@ -3,7 +3,7 @@ from typing import Dict
 from llm import BaseLLM
 from core import AbstractRobot
 from config.config import BaseRobotConfig, BaseLLMConfigs
-from controller import BaseController, ControllerOptions
+from controller import ControllerOptions
 
 
 
@@ -16,7 +16,7 @@ class BaseRobot(AbstractRobot):
     self.gripper_timer = 0
     self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type]())
     self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type]())
-    self.MPC: BaseController = ControllerOptions[self.cfg.controller_type]()
+    self.MPC = ControllerOptions[self.cfg.controller_type]()
 
   def open_gripper(self):
     self.gripper = 0.
