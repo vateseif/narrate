@@ -16,6 +16,7 @@ class BaseNMPC(AbstractController):
   def __init__(self, cfg=BaseNMPCConfig()) -> None:
     super().__init__(cfg)
 
+    
     # init linear dynamics
     self.init_dynamics()
     # init problem (cost and constraints)
@@ -24,7 +25,7 @@ class BaseNMPC(AbstractController):
     self.init_controller()
 
     # init variables for python evaluation
-    self.eval_variables = {"ca":ca, "np":np} # python packages
+    self.eval_variables = {"ca":ca, "np":np, "t":self.t} # python packages
 
     # gripper fingers offset for constraints 
     self.gripper_offsets = [np.array([0., -0.048, 0.]), np.array([0., 0.048, 0.]), np.array([0., 0., 0.048])]
@@ -32,6 +33,8 @@ class BaseNMPC(AbstractController):
   def init_dynamics(self):
     # inti do_mpc model
     self.model = do_mpc.model.Model(self.cfg.model_type) # TODO: add model_type to cfg
+    # simulation time
+    self.t = self.model.set_variable('parameter', 't')
     # position (x, y, z)
     self.x = self.model.set_variable(var_type='_x', var_name='x', shape=(self.cfg.nx,1))
     # pose (z axis)
@@ -102,9 +105,13 @@ class BaseNMPC(AbstractController):
     self.set_objective()
     self.set_constraints()
     # setup
+    self.mpc.set_uncertainty_values(t=np.array([0.])) # init time to 0
     self.mpc.setup()
     self.mpc.set_initial_guess()
-    
+
+  def set_t(self, t:float):
+    """ Update the simulation time of the MPC controller"""
+    self.mpc.set_uncertainty_values(t=np.array([t]))
 
   def set_x0(self, x0: np.ndarray):
     self.mpc.x0 = np.concatenate((x0, np.zeros(1))) # TODO: 0 is dpsi hard-coded   
@@ -127,7 +134,7 @@ class BaseNMPC(AbstractController):
     ])
     # put together variables for python code evaluation:
     # python packages | robot state (gripper) | environment observations
-    eval_variables = self.eval_variables | {"x": self.x + R@offset} | observation
+    eval_variables = self.eval_variables | {"x": self.x + R@offset, "dx": self.dx} | observation
     # evaluate code
     evaluated_code = eval(code_str, eval_variables)
     return evaluated_code
@@ -173,6 +180,7 @@ class OptimizationNMPC(BaseNMPC):
     constraints = [[*map(lambda x: self._eval(c, observation, x), self.gripper_offsets)] for c in optimization.constraints]
     self.set_constraints(list(chain(*constraints)))
     # setup
+    self.mpc.set_uncertainty_values(t=np.array([0.])) # TODO this is badly harcoded
     self.mpc.setup()
     self.mpc.set_initial_guess()
     return 

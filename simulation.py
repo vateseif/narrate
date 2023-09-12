@@ -1,4 +1,5 @@
 import os
+import sys
 import threading
 import numpy as np
 from time import sleep
@@ -18,6 +19,8 @@ class Simulation(AbstractSimulation):
   def __init__(self, cfg=SimulationConfig()) -> None:
     super().__init__(cfg)
 
+    # simulation time
+    self.t = 0.
     # TODO: account for multiple robots
     self.robot = BaseRobot()
     # count number of tasks solved from a plan 
@@ -31,12 +34,15 @@ class Simulation(AbstractSimulation):
       self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
 
   def _reinit_robot(self):
+    """ Update simulation time and current state of MPC controller"""
+    self.robot.set_t(self.t)
+    # set x0 to measurements
     # x0 = [x, y, z, psi, dx, dy, dz]
     gripper_x = self.observation['robot_0'][:3]
     gripper_psi = np.array([self.observation['robot_0'][5]])
     gripper_dx = self.observation['robot_0'][6:9]
     x0 = np.concatenate((gripper_x, gripper_psi, gripper_dx))
-    self.robot.reset(x0)
+    self.robot.set_x0(x0)
 
   def reset(self):
     # reset pand env
@@ -58,6 +64,8 @@ class Simulation(AbstractSimulation):
         sleep(wait_s)
 
   def step(self):
+    # increase timestep
+    self.t += self.cfg.dt
     # update controller (i.e. set the current gripper position)
     self._reinit_robot()
     # compute action
@@ -79,6 +87,8 @@ class Simulation(AbstractSimulation):
     # init list of RGB frames if wanna save video
     if self.cfg.save_video:
       self._save_video()
+    # exit
+    sys.exit()
       
 
   def _save_video(self):

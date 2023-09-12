@@ -25,9 +25,11 @@ class BaseRobot(AbstractRobot):
   def close_gripper(self):
     self.gripper = -1.
 
+  def set_t(self, t:float):
+    self.MPC.set_t(t)
+
   def set_x0(self, x0: np.ndarray):
     self.MPC.set_x0(x0)
-    return
 
   def create_plan(self, user_task:str):
     plan = self.TP.run(user_task)

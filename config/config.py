@@ -67,10 +67,11 @@ class BaseRobotConfig(AbstractRobotConfig):
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
-  env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  mock_plan: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
-  save_video: bool = False
+  env_name: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  mock_plan: str = "clean_plate"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  save_video: bool = True
   fps: int = 30 # only used if save_video = True
+  dt: float = 0.05 # simulation timestep. Must be equal to that of controller
 
 BaseLLMConfigs = {
   "plan_objective": ObjectivePlanLLMConfig,
