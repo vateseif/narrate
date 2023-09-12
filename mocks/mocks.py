@@ -3,7 +3,7 @@ from llm import Plan
 optimization_mock_plan_stack = Plan(tasks=[
   "move the gripper to cube_4 and avoid any collision with every cube",
   "close gripper",
-  "move the gripper above cube_2 and avoid colliding with cube_2, cube_3 and cube_1",
+  "move the gripper on top of cube_2 and avoid colliding with cube_2, cube_3 and cube_1",
   "open gripper",
   "move gripper to cube_3 and avoid collisions with every cube",
   "close gripper",
@@ -29,15 +29,15 @@ optimization_mock_plan_pyramid = Plan(tasks=[
 optimization_mock_plan_L = Plan(tasks=[
   "move the gripper to cube_4 and avoid any collision with every cube",
   "close gripper",
-  "move the gripper in front cube_2 and avoid colliding with cube_2, cube_3 and cube_1",
+  "move the gripper to the left side (y axis) of cube_3 and avoid colliding with cube_1, cube_2 and cube_3",
   "open gripper",
-  "move gripper to cube_3 and avoid collisions with every cube",
+  "move gripper to cube_2 and avoid collisions with every cube",
   "close gripper",
-  "move gripper in behind cube_2 and avoid collisions with cube_1, cube_2, cube_4",
+  "move gripper behind cube_3 and avoid collisions with cube_1, cube_3, cube_4",
   "open gripper",
   "move gripper to cube_1 and avoid collisions with every cube",
   "close gripper",
-  "move gripper to the right of cube_3 and avoid colliding with cube_3",
+  "move gripper behind cube_2 and avoid colliding with cube_1, cube_3, cube_4",
   "open gripper",
 ])
 
