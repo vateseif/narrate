@@ -8,8 +8,9 @@ import panda_gym
 import numpy as np
 from langchain.chat_models import ChatOpenAI
 
-# GPT4 api key
-os.environ["OPENAI_API_KEY"] = open(os.path.dirname(__file__) + '/keys/gpt4.key', 'r').readline().rstrip()
+BASE_DIR = os.path.dirname(__file__)
+# GPT4 api key.
+os.environ["OPENAI_API_KEY"] = open(BASE_DIR + '/keys/gpt4.key', 'r').readline().rstrip()
 
 
 class AbstractLLMConfig:
@@ -31,8 +32,10 @@ class AbstractRobotConfig:
   controller_type: str
 
 class AbstractSimulaitonConfig:
-  env_name: str
   render: bool
+  env_name: str
+  mock_plan: str
+  save_video: bool
 
 class ObjBase:
   '''
