@@ -166,7 +166,8 @@ class OptimizationNMPC(BaseNMPC):
     # init mpc newly
     self.init_mpc()
     # apply constraint function
-    regulatization = 1e-6 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
+    # NOTE use 1e-6 when doing task L 
+    regulatization = 1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
     self.set_objective(self._eval(optimization.objective, observation) + regulatization)
     # set base constraint functions
     constraints = [[*map(lambda x: self._eval(c, observation, x), self.gripper_offsets)] for c in optimization.constraints]
