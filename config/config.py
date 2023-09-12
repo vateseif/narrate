@@ -49,7 +49,7 @@ class BaseControllerConfig(AbstractControllerConfig):
 class BaseNMPCConfig(AbstractControllerConfig):
   nx: int = 3
   nu: int = 3 
-  T: int = 10
+  T: int = 15
   dt: float = 0.05
   lu: float = -0.2 # lower bound on u
   hu: float = 0.2  # higher bound on u
@@ -68,7 +68,9 @@ class BaseRobotConfig(AbstractRobotConfig):
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  mock_plan: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  mock_plan: str = "L"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  save_video: bool = True
+  fps: int = 30 # only used if save_video = True
 
 BaseLLMConfigs = {
   "plan_objective": ObjectivePlanLLMConfig,
