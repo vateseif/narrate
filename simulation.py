@@ -56,6 +56,7 @@ class Simulation(AbstractSimulation):
       self.frames_list = []
 
   def create_plan(self, user_task:str, wait_s:Optional[int]=None): 
+    self.task_counter = 0
     self.plan = self.robot.create_plan(user_task) if self.cfg.task is None else nmpcMockOptions[self.cfg.task]
     print(f"\33[92m {self.plan.tasks} \033[0m \n")
     if wait_s is not None:
