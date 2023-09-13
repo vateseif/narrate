@@ -14,4 +14,5 @@ openai
 asyncua
 langchain
 ipywidgets
+streamlit
 git+https://github.com/vateseif/Safe-panda-gym.git@safe_rl-panda-gym
