@@ -3,9 +3,6 @@ from typing import List
 from core import AbstractLLM, AbstractLLMConfig
 from mocks.mocks import nmpcMockOptions
 
-import langchain
-langchain.verbose = False
-
 import tiktoken
 from streamlit import empty, session_state
 from pydantic import BaseModel, Field
@@ -55,15 +52,15 @@ class StreamHandler(BaseCallbackHandler):
     self.text = ""
     self.container = empty()
 
-  def on_llm_new_token(self, token: str, **kwargs) -> None:
+  def on_llm_new_token(self, token: str, *, chunk, run_id, parent_run_id=None, **kwargs):
+    super().on_llm_new_token(token, chunk=chunk, run_id=run_id, parent_run_id=parent_run_id, **kwargs)
     self.text += token
-    self.container.markdown(self.text + "▌")
+    self.container.text(self.text + "▌")
 
   def on_llm_end(self, response, **kwargs):
     pretty_text = self.parser.parse(self.text).pretty_print()
     self.container.markdown(pretty_text)
     session_state.messages.append(AIMessage(content=pretty_text))
-
 
 def simulate_stream(text:str):
   """ Function used to simulate stream in case of harcoded GPT responses """

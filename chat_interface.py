@@ -1,6 +1,4 @@
-import os
 import streamlit as st
-from time import sleep
 from langchain.schema import HumanMessage
 
 from simulation import Simulation
@@ -10,10 +8,10 @@ from simulation import Simulation
 st.title("Language to Optimization")
 
 # Create sidebar
-#st.sidebar.title("Message Type")
+st.sidebar.title("Choose model")
 
 # Add a sidebar radio button to select the message type
-#model = st.sidebar.radio("Select the model to talk to", ["Task Planner", "Optimization Designer"])
+model = st.sidebar.radio("Select the model to talk to", ["Task Planner", "Optimization Designer"])
 
 # init robot simulation
 if "sim" not in st.session_state:
@@ -39,9 +37,9 @@ if prompt := st.chat_input("What should the robot do?"):
 
   # Display assistant response in chat message container
   with st.chat_message("ai"):
-    #if model == "Task Planner":
-    st.session_state.sim.create_plan(prompt, solve=True) 
-    #elif model == "Optimization Designer":
-    #  st.session_state.sim._solve_task(prompt)
+    if model == "Task Planner":
+      st.session_state.sim.create_plan(prompt, solve=True) 
+    elif model == "Optimization Designer":
+      st.session_state.sim._solve_task(prompt)
 
 

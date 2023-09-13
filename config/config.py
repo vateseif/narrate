@@ -15,38 +15,46 @@ class ObjectivePlanLLMConfig(AbstractLLMConfig):
   prompt: str = OBJECTIVE_TASK_PLANNER_PROMPT
   parsing: str = "plan"
   model_name: str = "gpt-4"
+  streaming: bool = False
   temperature: float = 0.7
 
 class OptimizationPlanLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
+    self.mock_task = task # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   parsing: str = "plan"
-  model_name: str = "gpt-4"
+  model_name: str = "gpt-3.5-turbo"
+  streaming: bool = True
   temperature: float = 0.7
 
 class ObjectiveLLMConfig(AbstractLLMConfig):
   prompt: str = OBJECTIVE_DESIGNER_PROMPT
   parsing: str = "objective"
   model_name: str = "gpt-3.5-turbo"
+  streaming: bool = False
   temperature: float = 0.7
 
 class OptimizationLLMConfig(AbstractLLMConfig):
   prompt: str = OPTIMIZATION_DESIGNER_PROMPT
   parsing: str = "optimization"
   model_name: str = "gpt-3.5-turbo"
+  streaming: bool = False
   temperature: float = 0.7
 
 class NMPCObjectiveLLMConfig(AbstractLLMConfig):
   prompt: str = NMPC_OBJECTIVE_DESIGNER_PROMPT
   parsing: str = "objective"
   model_name: str = "gpt-4"
+  streaming: bool = False
   temperature: float = 0.7
 
 class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
+    self.mock_task = None
     self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
   parsing: str = "optimization"
   model_name: str = "gpt-4"
+  streaming: bool = True
   temperature: float = 0.6
 
 class BaseControllerConfig(AbstractControllerConfig):
@@ -72,10 +80,11 @@ class BaseRobotConfig(AbstractRobotConfig):
   def __init__(self, task:str=None) -> None:
     self.task: str = task
   name: str = "objective"
-  tp_type: str = "plan_optimization"                   # Task planner: ["plan_objective, plan_optimization"]
+  tp_type: str = "plan_optimization"          # Task planner: ["plan_objective, plan_optimization"]
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
   controller_type: str = "nmpc_optimization"  # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 15
+  wait_s: float = 6. # wait time after a new MPC formualtion is applied
 
 
 
