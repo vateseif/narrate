@@ -11,7 +11,7 @@ from matplotlib.animation import FFMpegWriter
 from llm import Plan
 from robot import BaseRobot
 from core import AbstractSimulation, BASE_DIR
-from config.config import SimulationConfig
+from config.config import SimulationConfig, BaseRobotConfig
 from mocks.mocks import nmpcMockOptions # TODO 
 
 
@@ -22,7 +22,7 @@ class Simulation(AbstractSimulation):
     # simulation time
     self.t = 0.
     # TODO: account for multiple robots
-    self.robot = BaseRobot()
+    self.robot = BaseRobot(BaseRobotConfig(self.cfg.task))
     # count number of tasks solved from a plan 
     self.task_counter = 0
     # bool for stopping simulation
@@ -30,7 +30,7 @@ class Simulation(AbstractSimulation):
     # init list of RGB frames if wanna save video
     if self.cfg.save_video:
       self.frames_list = []
-      self.video_name = f"{self.cfg.env_name}_{self.cfg.mock_plan}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
+      self.video_name = f"{self.cfg.env_name}_{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
       self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
 
   def _reinit_robot(self):
@@ -56,7 +56,7 @@ class Simulation(AbstractSimulation):
       self.frames_list = []
 
   def create_plan(self, user_task:str, wait_s:Optional[int]=None): 
-    self.plan = self.robot.create_plan(user_task) if self.cfg.mock_plan is None else nmpcMockOptions[self.cfg.mock_plan]
+    self.plan = self.robot.create_plan(user_task) if self.cfg.task is None else nmpcMockOptions[self.cfg.task]
     print(f"\33[92m {self.plan.tasks} \033[0m \n")
     if wait_s is not None:
       for _ in self.plan.tasks:

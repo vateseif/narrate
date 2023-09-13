@@ -34,7 +34,7 @@ class AbstractRobotConfig:
 class AbstractSimulaitonConfig:
   render: bool
   env_name: str
-  mock_plan: str
+  task: str
   save_video: bool
 
 class ObjBase:

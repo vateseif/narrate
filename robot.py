@@ -14,8 +14,8 @@ class BaseRobot(AbstractRobot):
 
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
-    self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type]())
-    self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type]())
+    self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type](self.cfg.task))
+    self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type](self.cfg.task))
     self.MPC = ControllerOptions[self.cfg.controller_type]()
 
   def open_gripper(self):

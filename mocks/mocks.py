@@ -59,9 +59,17 @@ objective_mock_plan = Plan(tasks=[
   "open gripper"
 ])
 
+optimization_mock_plan_clean_plate = Plan(tasks=[
+  "move the gripper to sponge and avoid colliding with plate and sponge",
+  "close gripper",
+  "move the gripper 0.05m above the plate",
+  "move the x and y coordinates of the gripper around a circle of radius 0.05m centered at the plate. Keep the z coordinate at 0.02m above the plate"
+])
+
 nmpcMockOptions = {
   "nmpc_objective": objective_mock_plan,
   "stack": optimization_mock_plan_stack,
   "pyramid": optimization_mock_plan_pyramid,
-  "L": optimization_mock_plan_L
+  "L": optimization_mock_plan_L,
+  "clean_plate": optimization_mock_plan_clean_plate
 }

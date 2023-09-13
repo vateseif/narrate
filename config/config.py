@@ -2,6 +2,15 @@ from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfi
 from prompts.stack import *
 
 
+class SimulationConfig(AbstractSimulaitonConfig):
+  render: bool = True
+  env_name: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "clean_plate"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  save_video: bool = False
+  fps: int = 30 # only used if save_video = True
+  dt: float = 0.05 # simulation timestep. Must be equal to that of controller
+
+
 class ObjectivePlanLLMConfig(AbstractLLMConfig):
   prompt: str = OBJECTIVE_TASK_PLANNER_PROMPT
   parsing: str = "plan"
@@ -9,7 +18,8 @@ class ObjectivePlanLLMConfig(AbstractLLMConfig):
   temperature: float = 0.7
 
 class OptimizationPlanLLMConfig(AbstractLLMConfig):
-  prompt: str = OPTIMIZATION_TASK_PLANNER_PROMPT
+  def __init__(self, task:str=None) -> None:
+    self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   parsing: str = "plan"
   model_name: str = "gpt-4"
   temperature: float = 0.7
@@ -33,10 +43,11 @@ class NMPCObjectiveLLMConfig(AbstractLLMConfig):
   temperature: float = 0.7
 
 class NMPCOptimizationLLMConfig(AbstractLLMConfig):
-  prompt: str = NMPC_OPTIMIZATION_DESIGNER_PROMPT
+  def __init__(self, task:str=None) -> None:
+    self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
   parsing: str = "optimization"
   model_name: str = "gpt-4"
-  temperature: float = 0.7
+  temperature: float = 0.6
 
 class BaseControllerConfig(AbstractControllerConfig):
   nx: int = 3
@@ -58,6 +69,8 @@ class BaseNMPCConfig(AbstractControllerConfig):
   
 
 class BaseRobotConfig(AbstractRobotConfig):
+  def __init__(self, task:str=None) -> None:
+    self.task: str = task
   name: str = "objective"
   tp_type: str = "plan_optimization"                   # Task planner: ["plan_objective, plan_optimization"]
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
@@ -65,13 +78,6 @@ class BaseRobotConfig(AbstractRobotConfig):
   open_gripper_time: int = 15
 
 
-class SimulationConfig(AbstractSimulaitonConfig):
-  render: bool = True
-  env_name: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  mock_plan: str = "clean_plate"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
-  save_video: bool = True
-  fps: int = 30 # only used if save_video = True
-  dt: float = 0.05 # simulation timestep. Must be equal to that of controller
 
 BaseLLMConfigs = {
   "plan_objective": ObjectivePlanLLMConfig,
