@@ -6,7 +6,6 @@ from abc import abstractmethod
 import gym
 import panda_gym
 import numpy as np
-from langchain.chat_models import ChatOpenAI
 
 BASE_DIR = os.path.dirname(__file__)
 # GPT4 api key.
@@ -17,6 +16,7 @@ class AbstractLLMConfig:
   prompt: str
   parsing: str
   model_name: str
+  streaming: bool
   temperature: float
 
 class AbstractControllerConfig:
@@ -80,9 +80,6 @@ class AbstractLLM(ObjBase):
 
   def __init__(self, cfg:AbstractLLMConfig) -> None:
     self.cfg = cfg
-    # init model
-    self.model = ChatOpenAI(model_name=self.cfg.model_name, temperature=self.cfg.temperature)
-
 
   @abstractmethod
   def run(self):

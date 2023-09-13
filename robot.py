@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Dict
-from llm import BaseLLM
+from llm import BaseLLM, simulate_stream
 from core import AbstractRobot
 from config.config import BaseRobotConfig, BaseLLMConfigs
 from controller import ControllerOptions
@@ -35,23 +35,26 @@ class BaseRobot(AbstractRobot):
     plan = self.TP.run(user_task)
     return plan # TODO: plan.tasks is hardcoded here
 
-  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]):
+  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]) -> float:
+    """ Returns the sleep time to be applied"""
     # print plan
-    print(f"\033[91m Task: {plan} \033[0m ")
+    #print(f"\033[91m Task: {plan} \033[0m ")
     # if custom function is called apply that
     if "open" in plan.lower() and "gripper" in plan.lower():
       self.open_gripper()
-      print(f"\33[92m open_gripper() \033[0m \n")
-      return
+      #print(f"\33[92m open_gripper() \033[0m \n")
+      simulate_stream("\n```\n open_gripper()\n```\n")
+      return 1.
     elif "close" in plan.lower() and "gripper" in plan.lower():
       self.close_gripper()
-      print(f"\33[92m close_gripper() \033[0m \n")
-      return
+      #print(f"\33[92m close_gripper() \033[0m \n")
+      simulate_stream("\n```\n close_gripper()\n```\n")
+      return 1.
     # design optimization functions
     optimization = self.OD.run(plan)
     # apply optimization functions to MPC
     self.MPC.apply_gpt_message(optimization, observation)
-    return
+    return self.cfg.wait_s
 
 
   def step(self):

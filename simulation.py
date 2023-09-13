@@ -5,14 +5,13 @@ import numpy as np
 from time import sleep
 from typing import Optional
 from datetime import datetime
+from streamlit import spinner
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
 
-from llm import Plan
 from robot import BaseRobot
 from core import AbstractSimulation, BASE_DIR
 from config.config import SimulationConfig, BaseRobotConfig
-from mocks.mocks import nmpcMockOptions # TODO 
 
 
 class Simulation(AbstractSimulation):
@@ -55,14 +54,13 @@ class Simulation(AbstractSimulation):
     if self.cfg.save_video:
       self.frames_list = []
 
-  def create_plan(self, user_task:str, wait_s:Optional[int]=None): 
+  def create_plan(self, user_task:str, solve:bool=False): 
+    sleep(1)
     self.task_counter = 0
-    self.plan = self.robot.create_plan(user_task) if self.cfg.task is None else nmpcMockOptions[self.cfg.task]
-    print(f"\33[92m {self.plan.tasks} \033[0m \n")
-    if wait_s is not None:
+    self.plan = self.robot.create_plan(user_task)
+    if solve:
       for _ in self.plan.tasks:
         self.next_task()
-        sleep(wait_s)
 
   def step(self):
     # increase timestep
@@ -108,8 +106,9 @@ class Simulation(AbstractSimulation):
         writer.grab_frame()  # Save the current frame to the video.
 
   def _solve_task(self, plan:str):
-    self.robot.next_plan(plan, self.observation)
-    return
+    wait_s = self.robot.next_plan(plan, self.observation)
+    with spinner("Executing MPC code..."):
+      sleep(wait_s)
 
   def next_task(self):
     self._solve_task(self.plan.tasks[self.task_counter])
