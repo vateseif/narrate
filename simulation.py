@@ -59,8 +59,11 @@ class Simulation(AbstractSimulation):
     self.task_counter = 0
     self.plan = self.robot.create_plan(user_task)
     if solve:
-      for _ in self.plan.tasks:
-        self.next_task()
+      self.execute_plan()
+
+  def execute_plan(self):
+    for _ in self.plan.tasks:
+      self.next_task()
 
   def step(self):
     # increase timestep
