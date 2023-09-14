@@ -20,10 +20,10 @@ class ObjectivePlanLLMConfig(AbstractLLMConfig):
 
 class OptimizationPlanLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
-    self.mock_task = task # TODO wtf this is shit
+    self.mock_task = None#task # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   parsing: str = "plan"
-  model_name: str = "gpt-3.5-turbo"
+  model_name: str = "gpt-4"
   streaming: bool = True
   temperature: float = 0.7
 
