@@ -18,23 +18,10 @@ In the requirements, a custom version of the Safe-Panda-Gym is added. In case th
 pip uninstall panda_gym
 pip install -r requirements.txt
 ~~~
+### OpenAI key
+You need to create the file `keys/gpt4.key` and put your OpenAI key. Make sure to have acces to GPT4. 
 
 ## Run
-You can run the code in an interactive way as follows:
 ~~~
-python -i main.py
-~~~
-You will be able to give a task to the robot from terminal:
-~~~
-sim.create_plan("Stack all cubes on top of cube_2")
-~~~
-You can then trigger each task consecutively by running:
-~~~
-sim.next_task()
-~~~
-
-
-If you want to give feedback to the Optimization Designer (OD), you can run:
-~~~
-sim._solve_task("cube_2 has fallen down, you should go pick it up again")
+streamlit run main.py
 ~~~
