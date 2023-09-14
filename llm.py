@@ -12,6 +12,7 @@ from langchain.prompts.chat import SystemMessagePromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain.callbacks.base import BaseCallbackHandler
 
+
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 
 class Plan(BaseModel):
@@ -38,7 +39,7 @@ class Optimization(BaseModel):
     pretty_msg += f"min {cls.objective}\n"
     pretty_msg += f"s.t.\n"
     for c in cls.constraints:
-      pretty_msg += f"\t {c}\n"
+      pretty_msg += f"\t {c} <= 0\n"
     return pretty_msg+"\n```\n"
 
 class StreamHandler(BaseCallbackHandler):
@@ -55,11 +56,11 @@ class StreamHandler(BaseCallbackHandler):
   def on_llm_new_token(self, token: str, *, chunk, run_id, parent_run_id=None, **kwargs):
     super().on_llm_new_token(token, chunk=chunk, run_id=run_id, parent_run_id=parent_run_id, **kwargs)
     self.text += token
-    self.container.text(self.text + "▌")
+    self.container.write(self.text + "▌")
 
   def on_llm_end(self, response, **kwargs):
     pretty_text = self.parser.parse(self.text).pretty_print()
-    self.container.markdown(pretty_text)
+    self.container.markdown(pretty_text, unsafe_allow_html=False)
     session_state.messages.append(AIMessage(content=pretty_text))
 
 def simulate_stream(text:str):
