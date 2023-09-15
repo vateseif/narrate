@@ -22,6 +22,7 @@ class OptimizationPlanLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
     self.mock_task = None#task # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
+  avatar: str = "TP"
   parsing: str = "plan"
   model_name: str = "gpt-4"
   streaming: bool = True
@@ -52,6 +53,7 @@ class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
     self.mock_task = None
     self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
+  avatar: str = "OD"
   parsing: str = "optimization"
   model_name: str = "gpt-4"
   streaming: bool = True
