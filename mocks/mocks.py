@@ -71,7 +71,7 @@ optimization_mock_plan_clean_plate = '''
   "move the gripper to sponge and avoid colliding with plate and sponge",
   "close gripper",
   "move the gripper 0.05m above the plate",
-  "move the x and y coordinates of the gripper around a circle of radius 0.05m centered at the plate. Keep the z coordinate at 0.015m above the plate"
+  "move the gripper in a circular motion while being at the same height of the plate"
 ]}
 '''
 
