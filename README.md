@@ -5,7 +5,7 @@ This section focuses on how to convert an instruction in English to reward and c
 ### Env
 Create the conda env
 ~~~
-create --name l2o python=3.9
+conda create --name l2o python=3.9
 conda activate l2o
 ~~~
 ### Requirements
