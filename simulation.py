@@ -36,12 +36,7 @@ class Simulation(AbstractSimulation):
     """ Update simulation time and current state of MPC controller"""
     self.robot.set_t(self.t)
     # set x0 to measurements
-    # x0 = [x, y, z, psi, dx, dy, dz]
-    gripper_x = self.observation['robot_0'][:3]
-    gripper_psi = np.array([self.observation['robot_0'][5]])
-    gripper_dx = self.observation['robot_0'][6:9]
-    x0 = np.concatenate((gripper_x, gripper_psi, gripper_dx))
-    self.robot.set_x0(x0)
+    self.robot.set_x0(self.observation['robot_0'])
 
   def reset(self):
     # reset pand env

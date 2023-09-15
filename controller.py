@@ -19,10 +19,11 @@ class BaseNMPC(AbstractController):
     
     # init linear dynamics
     self.init_dynamics()
-    # init problem (cost and constraints)
-    #self.init_problem()
     # init do_mpc problem
     self.init_controller()
+
+    # init gripper pose to keep track of measurements'
+    self.gripper_pose = np.zeros(6) # [x, y, z, theta, gamma, psi]
 
     # init variables for python evaluation
     self.eval_variables = {"ca":ca, "np":np, "t":self.t} # python packages
@@ -113,14 +114,21 @@ class BaseNMPC(AbstractController):
     """ Update the simulation time of the MPC controller"""
     self.mpc.set_uncertainty_values(t=np.array([t]))
 
-  def set_x0(self, x0: np.ndarray):
-    self.mpc.x0 = np.concatenate((x0, np.zeros(1))) # TODO: 0 is dpsi hard-coded   
+  def set_x0(self, observation: np.ndarray):
+    # store measurement of gripper pos
+    self.gripper_pose = observation[:6]
+    # init MPC x0 
+    gripper_x = observation[:3]
+    gripper_psi = np.array([observation[5]])
+    gripper_dx = observation[6:9]
+    self.mpc.x0 = np.concatenate((gripper_x, gripper_psi, gripper_dx, np.zeros(1))) # TODO: 0 is dpsi hard-coded   
 
-  def reset(self, x0: np.ndarray) -> None:
+  def reset(self, observation: np.ndarray) -> None:
+    """
+      observation: robot observation from simulation containing position, angle and velocities 
+    """
     # TODO
-    #self.init_problem()
-    self.set_x0(x0)
-    #self.xd.value = x0
+    self.set_x0(observation)
     return  
 
 
@@ -143,12 +151,14 @@ class BaseNMPC(AbstractController):
     # solve mpc at state x0
     u0 = self.mpc.make_step(self.mpc.x0).squeeze()
     ee_displacement = u0[:3]
-    psi_rotation = u0[-1]
-    return np.concatenate((ee_displacement, np.array([0., 0., psi_rotation])))
+    psi_rotation = np.array([u0[-1]])
+    #theta_gamma_rotation = (np.array([np.pi, 0.]) - self.gripper_pose[3:5]) # TODO: 2 is harcoded. Also init the desired theta_gamma
+    theta_gamma_rotation = np.zeros(2)
+    #print(self.gripper_pose[3:5])
+    return np.concatenate((ee_displacement, theta_gamma_rotation, psi_rotation))
 
   def step(self):
     if not self.mpc.flags['setup']:
-      #sleep(1)
       return np.array([0., 0., 0., 0., 0., 0.]) # TODO change
     return self._solve()
 

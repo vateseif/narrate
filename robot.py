@@ -28,8 +28,8 @@ class BaseRobot(AbstractRobot):
   def set_t(self, t:float):
     self.MPC.set_t(t)
 
-  def set_x0(self, x0: np.ndarray):
-    self.MPC.set_x0(x0)
+  def set_x0(self, observation: np.ndarray):
+    self.MPC.set_x0(observation)
 
   def create_plan(self, user_task:str):
     plan = self.TP.run(user_task)
@@ -42,13 +42,11 @@ class BaseRobot(AbstractRobot):
     # if custom function is called apply that
     if "open" in plan.lower() and "gripper" in plan.lower():
       self.open_gripper()
-      #print(f"\33[92m open_gripper() \033[0m \n")
-      simulate_stream("\n```\n open_gripper()\n```\n")
+      simulate_stream("OD", "\n```\n open_gripper()\n```\n")
       return 1.
     elif "close" in plan.lower() and "gripper" in plan.lower():
       self.close_gripper()
-      #print(f"\33[92m close_gripper() \033[0m \n")
-      simulate_stream("\n```\n close_gripper()\n```\n")
+      simulate_stream("OD", "\n```\n close_gripper()\n```\n")
       return 1.
     # design optimization functions
     optimization = self.OD.run(plan)
