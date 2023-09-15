@@ -44,8 +44,9 @@ class Optimization(BaseModel):
 
 class StreamHandler(BaseCallbackHandler):
 
-  def __init__(self, parser: PydanticOutputParser) -> None:
+  def __init__(self, avatar:str, parser: PydanticOutputParser) -> None:
     super().__init__()
+    self.avatar = avatar
     self.parser = parser
 
   def on_llm_start(self, serialized, prompts, **kwargs) -> None:
@@ -61,9 +62,9 @@ class StreamHandler(BaseCallbackHandler):
   def on_llm_end(self, response, **kwargs):
     pretty_text = self.parser.parse(self.text).pretty_print()
     self.container.markdown(pretty_text, unsafe_allow_html=False)
-    session_state.messages.append(AIMessage(content=pretty_text))
+    session_state.messages.append({"type": self.avatar, "content": pretty_text})
 
-def simulate_stream(text:str):
+def simulate_stream(avatar:str, text:str):
   """ Function used to simulate stream in case of harcoded GPT responses """
   placeholder = empty()
   # Simulate stream of response with milliseconds delay
@@ -75,7 +76,7 @@ def simulate_stream(text:str):
       placeholder.markdown(partial_text + "▌")
   placeholder.markdown(text)
   # return AI message
-  session_state.messages.append(AIMessage(content=text))
+  session_state.messages.append({"type": avatar, "content":text}) # TODO 
 
 
 ParsingModel = {
@@ -95,7 +96,7 @@ class BaseLLM(AbstractLLM):
       model_name=self.cfg.model_name, 
       temperature=self.cfg.temperature,
       streaming=self.cfg.streaming,
-      callbacks=None if not self.cfg.streaming else [StreamHandler(self.parser)]
+      callbacks=None if not self.cfg.streaming else [StreamHandler(self.cfg.avatar, self.parser)]
     )
     # init prompt
     system_prompt = SystemMessagePromptTemplate.from_template(self.cfg.prompt)
@@ -108,7 +109,7 @@ class BaseLLM(AbstractLLM):
       model_message = self.model(self.messages)
     else:
       model_message = AIMessage(content=nmpcMockOptions[self.cfg.mock_task])
-      simulate_stream(self.parser.parse(model_message.content).pretty_print())
+      simulate_stream(self.cfg.avatar, self.parser.parse(model_message.content).pretty_print())
     self.messages.append(model_message)
     #print(f"\33[92m {model_message.content} \033[0m \n")
     return self.parser.parse(model_message.content)
