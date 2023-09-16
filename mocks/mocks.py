@@ -75,6 +75,12 @@ optimization_mock_plan_clean_plate = '''
 ]}
 '''
 
+TP_move_table = '''
+{"tasks":[
+  "move left gripper to left handle and right gripper to right handle"
+]}
+'''
+
 OD_mock = '''
 {
   "objective": "ca.norm_2(x - sponge)**2",
@@ -85,11 +91,23 @@ OD_mock = '''
 } 
 ''' 
 
+OD_move_table = '''
+{
+  "objective": "ca.norm_2(x_left - (handle_left+np.array([0,0,0.05])))**2 + ca.norm_2(x_right - (handle_right+np.array([0,0,0.05])))**2",
+  "constraints": [
+    "0.07 - ca.norm_2(x_left - handle_left)",
+    "0.07 - ca.norm_2(x_right - handle_right)"
+    ]
+} 
+'''
+
 nmpcMockOptions = {
   "nmpc_objective": objective_mock_plan,
   "stack": optimization_mock_plan_stack,
   "pyramid": optimization_mock_plan_pyramid,
   "L": optimization_mock_plan_L,
   "clean_plate": optimization_mock_plan_clean_plate,
-  "OD": OD_mock
+  "OD": OD_mock,
+  "OD_move_table": OD_move_table,
+  "move_table": TP_move_table
 }

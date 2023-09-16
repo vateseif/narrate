@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict
+from typing import Dict, List
 from llm import BaseLLM, simulate_stream
 from core import AbstractRobot
 from config.config import BaseRobotConfig, BaseLLMConfigs
@@ -56,9 +56,17 @@ class BaseRobot(AbstractRobot):
 
 
   def step(self):
-    action = np.hstack((self.MPC.step(), self.gripper))  
+    action = []
+    # compute actions from controller (single or dual robot)
+    control: List[np.ndarray] = self.MPC.step()
+    for u in control:
+      action.append(np.hstack((u, self.gripper)))  
+    
+    # Logic for opening and closing gripper
     if self.gripper==0 and self.gripper_timer>self.cfg.open_gripper_time: 
       self.gripper = 1.
     else:
       self.gripper_timer += 1 
+    
+    
     return action

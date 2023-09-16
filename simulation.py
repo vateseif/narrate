@@ -36,7 +36,7 @@ class Simulation(AbstractSimulation):
     """ Update simulation time and current state of MPC controller"""
     self.robot.set_t(self.t)
     # set x0 to measurements
-    self.robot.set_x0(self.observation['robot_0'])
+    self.robot.set_x0(self.observation)
 
   def reset(self):
     # reset pand env
@@ -66,7 +66,7 @@ class Simulation(AbstractSimulation):
     # update controller (i.e. set the current gripper position)
     self._reinit_robot()
     # compute action
-    action = [self.robot.step()] # TODO: this is a list because the env may have multiple robots
+    action = self.robot.step() # TODO: this is a list because the env may have multiple robots
     # apply action
     self.observation, _, done, _ = self.env.step(action)
     # store RGB frames if wanna save video

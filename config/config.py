@@ -4,8 +4,8 @@ from prompts.stack import *
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
-  env_name: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  task: str = "clean_plate"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  env_name: str = "MoveTable"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "move_table"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
   fps: int = 30 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
@@ -20,7 +20,7 @@ class ObjectivePlanLLMConfig(AbstractLLMConfig):
 
 class OptimizationPlanLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
-    self.mock_task = None#task # TODO wtf this is shit
+    self.mock_task = task # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   avatar: str = "TP"
   parsing: str = "plan"
@@ -51,7 +51,7 @@ class NMPCObjectiveLLMConfig(AbstractLLMConfig):
 
 class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
-    self.mock_task = None
+    self.mock_task = "OD_move_table"
     self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
   avatar: str = "OD"
   parsing: str = "optimization"
@@ -84,7 +84,7 @@ class BaseRobotConfig(AbstractRobotConfig):
   name: str = "objective"
   tp_type: str = "plan_optimization"          # Task planner: ["plan_objective, plan_optimization"]
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
-  controller_type: str = "nmpc_optimization"  # Controller type:        ["objective", "optimization"]
+  controller_type: str = "dual"  # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 15
   wait_s: float = 6. # wait time after a new MPC formualtion is applied
 
