@@ -20,8 +20,7 @@ class Simulation(AbstractSimulation):
 
     # simulation time
     self.t = 0.
-    # TODO: account for multiple robots
-    self.robot = BaseRobot(BaseRobotConfig(self.cfg.task))
+    self.robot = BaseRobot(self.env.robot_names,BaseRobotConfig(self.cfg.task))
     # count number of tasks solved from a plan 
     self.task_counter = 0
     # bool for stopping simulation
