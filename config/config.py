@@ -51,7 +51,7 @@ class NMPCObjectiveLLMConfig(AbstractLLMConfig):
 
 class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
-    self.mock_task = "OD_move_table"
+    self.mock_task = None#"OD_move_table"
     self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
   avatar: str = "OD"
   parsing: str = "optimization"
@@ -84,7 +84,7 @@ class BaseRobotConfig(AbstractRobotConfig):
   name: str = "objective"
   tp_type: str = "plan_optimization"          # Task planner: ["plan_objective, plan_optimization"]
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
-  controller_type: str = "dual"  # Controller type:        ["objective", "optimization"]
+  controller_type: str = "optimization"  # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 15
   wait_s: float = 6. # wait time after a new MPC formualtion is applied
 
