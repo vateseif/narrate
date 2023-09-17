@@ -68,10 +68,11 @@ objective_mock_plan = '''
 
 optimization_mock_plan_clean_plate = '''
 {"tasks":[
-  "move the gripper to sponge and avoid colliding with plate and sponge",
+  "move the gripper to the sponge",
   "close gripper",
-  "move the gripper 0.05m above the plate",
-  "move the gripper in a circular motion while being at the same height of the plate"
+  "move the gripper up 0.03m with the sponge avoiding collision with the plate",
+  "move the gripper 0.02m above the plate avoiding collision with the plate",
+  "move the gripper in circular motion over the plate"
 ]}
 '''
 
