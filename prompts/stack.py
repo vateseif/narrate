@@ -76,6 +76,28 @@ Rules:
 {format_instructions}
 """
 
+OPTIMIZATION_TASK_PLANNER_PROMPT_MOVE_TABLE = """
+You are a helpful assistant in charge of controlling a robot manipulator.
+Your task is that of creating a full and precise plan of what the robot has to do once a command from the user is given to you.
+This is the description of the scene:
+  - There are 2 objects on the table: sponge, plate.
+  - The sponge has the shape of a cube with side length 0.03m
+  - The plate has circular shape with radius of 0.05m.
+  - When moving the gripper specify if it has to avoid collisions with any object
+
+You can control the robot in the following way:
+  1. move the gripper of the robot
+  2. move the gripper in some defined motion
+  3. open gripper
+  4. close gripper
+
+Rules:
+  1. If you want to pick an object you have to avoid colliding with all objects, including the one to pick
+  2. If you already picked an object then you must not avoid colliding with that specific object
+
+{format_instructions}
+"""
+
 
 # optimization designer prompt
 OBJECTIVE_DESIGNER_PROMPT = """
@@ -222,14 +244,54 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE = """
   {format_instructions}
   """
 
+
+NMPC_OPTIMIZATION_DESIGNER_PROMPT_MOVE_TABLE = """
+  You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling 2 robot manipulators. 
+  At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
+
+  This is the scene description:
+    - The MPC controller is used to generate the trajectory of the gripper.
+    - Casadi is used to program the MPC.
+    - The variable x_left represents the gripper position of the left robot in 3D, i.e. (x, y, z).
+    - The variable x_right represents the gripper position of the right robot in 3D, i.e. (x, y, z).
+    - The variable t represents the simulation time.
+    - There is a table of length 0.5m and width of 0.25m.
+    - The table has 2 handles called: handle_left and handle_right.
+    - You MUST write every inequality constraint such that it is satisfied if it is <= 0:
+        If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead.  
+    - The inequality constraints can be a function of x_left, x_right and/or t. 
+    - Use t in the inequalities especially when you need to describe motions of the gripper.
+
+  Here is example 1:
+  ~~~
+  Task: 
+      "move the left gripper 0.03m behind handle_left and keep gripper at a height higher than 0.1m"
+  Output:
+      objective = "ca.norm_2(x_left - (handle_left + np.array([-0.03, 0, 0])))**2"
+      constraints = ["0.1 - ca.norm_2(x_left[2])"]
+  ~~~
+  Notice how the inequality constraint holds if <= 0.
+
+  Here is example 2:
+  ~~~
+  Task: 
+      "Move the left gripper at constant speed along the x axis while keeping y and z fixed at 0.1m and the right gripper in the opposite direction"
+  Output:
+      objective = "ca.norm_2(x_left - np.array([t, 0.1, 0.1]))**2 + ca.norm_2(x_right - np.array([-t, 0.1, 0.1]))**2"
+      constraints = []
+  ~~~
+
+  {format_instructions}
+  """
+
 TP_PROMPTS = {
   "cubes": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
   "clean_plate": OPTIMIZATION_TASK_PLANNER_PROMPT_CLEAN_PLATE,
-  "move_table": OPTIMIZATION_TASK_PLANNER_PROMPT_CLEAN_PLATE # TODO
+  "move_table": OPTIMIZATION_TASK_PLANNER_PROMPT_MOVE_TABLE # TODO
 }
 
 OD_PROMPTS = {
   "cubes": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
   "clean_plate": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE,
-  "move_table": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE # TODO
+  "move_table": NMPC_OPTIMIZATION_DESIGNER_PROMPT_MOVE_TABLE # TODO
 }
