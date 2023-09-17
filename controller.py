@@ -12,11 +12,11 @@ from config.config import BaseNMPCConfig
 
 class BaseController(AbstractController):
 
-  def __init__(self, robot_names:List[str], cfg=BaseNMPCConfig) -> None:
+  def __init__(self, robots_info:List[Dict[str, np.ndarray]], cfg=BaseNMPCConfig) -> None:
     super().__init__(cfg)
 
     # init names of robots
-    self.robot_names = robot_names
+    self.robots_info = robots_info
 
     # init model dynamics
     self.init_model()
@@ -45,47 +45,51 @@ class BaseController(AbstractController):
     self.dpsi = []  # gripper rotational speed
     self.u = []     # gripper control (=velocity)
     self.u_psi = [] # gripper rotation control (=rotational velocity)
+    self.pose = []  # gripper pose [x, y, z, theta, gamma, psi]
 
-    for i, r in enumerate(self.robot_names):
+    for i, r in enumerate(self.robots_info):
       # position (x, y, z)
-      self.x.append(self.model.set_variable(var_type='_x', var_name=f'x{r}', shape=(self.cfg.nx,1)))
-      self.psi.append(self.model.set_variable(var_type='_x', var_name=f'psi{r}', shape=(1,1)))
-      self.dx.append(self.model.set_variable(var_type='_x', var_name=f'dx{r}', shape=(self.cfg.nx,1)))
-      self.dpsi.append(self.model.set_variable(var_type='_x', var_name=f'dpsi{r}', shape=(1,1)))
-      self.u.append(self.model.set_variable(var_type='_u', var_name=f'u{r}', shape=(self.cfg.nu,1)))
-      self.u_psi.append(self.model.set_variable(var_type='_u', var_name=f'u_psi{r}', shape=(1,1)))
+      self.x.append(self.model.set_variable(var_type='_x', var_name=f'x{r["name"]}', shape=(self.cfg.nx,1)))
+      self.psi.append(self.model.set_variable(var_type='_x', var_name=f'psi{r["name"]}', shape=(1,1)))
+      self.dx.append(self.model.set_variable(var_type='_x', var_name=f'dx{r["name"]}', shape=(self.cfg.nx,1)))
+      self.dpsi.append(self.model.set_variable(var_type='_x', var_name=f'dpsi{r["name"]}', shape=(1,1)))
+      self.u.append(self.model.set_variable(var_type='_u', var_name=f'u{r["name"]}', shape=(self.cfg.nu,1)))
+      self.u_psi.append(self.model.set_variable(var_type='_u', var_name=f'u_psi{r["name"]}', shape=(1,1)))
       # system dynamics
-      self.model.set_rhs(f'x{r}', self.x[i] + self.dx[i] * self.cfg.dt)
-      self.model.set_rhs(f'psi{r}', self.psi[i] + self.dpsi[i] * self.cfg.dt)
-      self.model.set_rhs(f'dx{r}', self.u[i])
-      self.model.set_rhs(f'dpsi{r}', self.u_psi[i])
+      self.model.set_rhs(f'x{r["name"]}', self.x[i] + self.dx[i] * self.cfg.dt)
+      self.model.set_rhs(f'psi{r["name"]}', self.psi[i] + self.dpsi[i] * self.cfg.dt)
+      self.model.set_rhs(f'dx{r["name"]}', self.u[i])
+      self.model.set_rhs(f'dpsi{r["name"]}', self.u_psi[i])
     
     # setup model
     self.model.setup()
   
   def set_objective(self, mterm: ca.SX = ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
     # objective terms
+    #regularization = 0
+    #for i in range(len(self.robots_info)):
+    #  regularization += 
     mterm = mterm # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
     lterm = 0.4*mterm
     # state objective
     self.mpc.set_objective(mterm=mterm, lterm=lterm)
     # input objective
-    u_kwargs = {f'u{r}':1. for r in self.robot_names} | {f'u_psi{r}':1. for r in self.robot_names} 
+    u_kwargs = {f'u{r["name"]}':1. for r in self.robots_info} | {f'u_psi{r["name"]}':1. for r in self.robots_info} 
     self.mpc.set_rterm(**u_kwargs)
 
   def set_constraints(self, nlp_constraints: Optional[List[ca.SX]] = None):
 
-    for r in self.robot_names:
+    for r in self.robots_info:
       # base constraints (state)
-      self.mpc.bounds['lower','_x', f'x{r}'] = np.array([-3., -3., 0.0]) # stay above table
-      #self.mpc.bounds['upper','_x', f'psi{r}'] = np.pi/2 * np.ones((1, 1))   # rotation upper bound
-      #self.mpc.bounds['lower','_x', f'psi{r}'] = -np.pi/2 * np.ones((1, 1))  # rotation lower bound
+      self.mpc.bounds['lower','_x', f'x{r["name"]}'] = np.array([-3., -3., 0.0]) # stay above table
+      #self.mpc.bounds['upper','_x', f'psi{r["name"]}'] = np.pi/2 * np.ones((1, 1))   # rotation upper bound
+      #self.mpc.bounds['lower','_x', f'psi{r["name"]}'] = -np.pi/2 * np.ones((1, 1))  # rotation lower bound
 
       # base constraints (input)
-      self.mpc.bounds['upper','_u', f'u{r}'] = self.cfg.hu * np.ones((self.cfg.nu, 1))  # input upper bound
-      self.mpc.bounds['lower','_u', f'u{r}'] = self.cfg.lu * np.ones((self.cfg.nu, 1))  # input lower bound
-      self.mpc.bounds['upper','_u', f'u_psi{r}'] = np.pi * np.ones((1, 1))   # input upper bound
-      self.mpc.bounds['lower','_u', f'u_psi{r}'] = -np.pi * np.ones((1, 1))  # input lower bound
+      self.mpc.bounds['upper','_u', f'u{r["name"]}'] = self.cfg.hu * np.ones((self.cfg.nu, 1))  # input upper bound
+      self.mpc.bounds['lower','_u', f'u{r["name"]}'] = self.cfg.lu * np.ones((self.cfg.nu, 1))  # input lower bound
+      self.mpc.bounds['upper','_u', f'u_psi{r["name"]}'] = np.pi * np.ones((1, 1))   # input upper bound
+      self.mpc.bounds['lower','_u', f'u_psi{r["name"]}'] = -np.pi * np.ones((1, 1))  # input lower bound
 
     if nlp_constraints == None: 
       return
@@ -108,7 +112,12 @@ class BaseController(AbstractController):
     # init
     self.init_mpc()
     # set functions
-    self.set_objective()
+    # TODO: should the regularization be always applied?
+    regularization = 0
+    for i, r in enumerate(self.robots_info):
+      regularization += ca.norm_2(self.x[i] - r['x0'])**2
+      regularization += 0.1*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1])) # TODO 0.1 is harcoded
+    self.set_objective(regularization)
     self.set_constraints()
     # setup
     self.mpc.set_uncertainty_values(t=np.array([0.])) # init time to 0
@@ -120,7 +129,7 @@ class BaseController(AbstractController):
     self.eval_variables = {"ca":ca, "np":np, "t":self.t} # python packages
 
     self.R = [] # rotation matrix for angle around z axis
-    for i in range(len(self.robot_names)):
+    for i in range(len(self.robots_info)):
       # rotation matrix
       self.R.append(np.array([[ca.cos(self.psi[i]), -ca.sin(self.psi[i]), 0],
                               [ca.sin(self.psi[i]), ca.cos(self.psi[i]), 0],
@@ -132,12 +141,14 @@ class BaseController(AbstractController):
 
   def set_x0(self, observation: Dict[str, np.ndarray]):
     x0 = []
-    for r in self.robot_names: # TODO set names instead of robot_0 in panda
-      obs = observation[f'robot{r}'] # observation of each robot
+    self.pose = []
+    for r in self.robots_info: # TODO set names instead of robot_0 in panda
+      obs = observation[f'robot{r["name"]}'] # observation of each robot
       x = obs[:3]
       psi = np.array([obs[5]])
       dx = obs[6:9]
       x0.append(np.concatenate((x, psi, dx, [0]))) # TODO dpsi is harcoded to 0 here
+      self.pose.append(obs[:6])
     # set x0 in MPC
     self.mpc.x0 = np.concatenate(x0)
 
@@ -153,12 +164,9 @@ class BaseController(AbstractController):
     #TODO the offset is still harcoded
     # put together variables for python code evaluation:    
     robots_states = {}
-    for i, r in enumerate(self.robot_names):
-      R = np.array([[ca.cos(self.psi[i]), -ca.sin(self.psi[i]), 0],
-                    [ca.sin(self.psi[i]), ca.cos(self.psi[i]), 0],
-                    [0, 0, 1.]])
-      robots_states[f'x{r}'] = self.x[i] + self.R[i]@offset
-      robots_states[f'dx{r}'] = self.dx[i]
+    for i, r in enumerate(self.robots_info):
+      robots_states[f'x{r["name"]}'] = self.x[i] + self.R[i]@offset
+      robots_states[f'dx{r["name"]}'] = self.dx[i]
     
     eval_variables = self.eval_variables | robots_states | observation
     # evaluate code
@@ -171,21 +179,22 @@ class BaseController(AbstractController):
     u0 = self.mpc.make_step(self.mpc.x0).squeeze()
     # compute action for each robot
     action = []
-    for i in range(len(self.robot_names)):
+    for i in range(len(self.robots_info)):
       ee_displacement = u0[4*i:4*i+3]     # positon control
+      theta_rotation = [0.]
+      gamma_rotation = [-self.pose[i][4] * 1]  # P control for angle around y axis # TODO: 1. is a hardcoded gain
       psi_rotation = [u0[4*i+3]]            # rotation control
-      theta_gamma_rotation = np.zeros(2)  # TODO no roll and pith control now
-      action.append(np.concatenate((ee_displacement, theta_gamma_rotation, psi_rotation)))
+      action.append(np.concatenate((ee_displacement, theta_rotation, gamma_rotation, psi_rotation)))
     
     return action
 
   def step(self):
     if not self.mpc.flags['setup']:
-      return [np.zeros(6) for i in range(len(self.robot_names))]  # TODO 6 is hard-coded here
+      return [np.zeros(6) for i in range(len(self.robots_info))]  # TODO 6 is hard-coded here
     return self._solve()
 
 
-class ObjectiveNMPC(BaseController):
+class ObjectiveController(BaseController):
 
   def apply_gpt_message(self, objective: Objective, observation: Dict[str, np.ndarray]) -> None:
     # init mpc newly
@@ -199,7 +208,7 @@ class ObjectiveNMPC(BaseController):
     self.mpc.set_initial_guess()
     return 
 
-class OptimizationNMPC(BaseController):
+class OptimizationController(BaseController):
 
   def apply_gpt_message(self, optimization: Optimization, observation: Dict[str, np.ndarray]) -> None:
     # init mpc newly
@@ -218,8 +227,8 @@ class OptimizationNMPC(BaseController):
     return 
 
 ControllerOptions = {
-  "objective": ObjectiveNMPC,
-  "optimization": OptimizationNMPC
+  "objective": ObjectiveController,
+  "optimization": OptimizationController
 }
 
 

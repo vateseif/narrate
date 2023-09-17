@@ -9,14 +9,14 @@ from controller import ControllerOptions
 
 class BaseRobot(AbstractRobot):
 
-  def __init__(self, robot_names:List[str], cfg=BaseRobotConfig()) -> None:
+  def __init__(self, robots_info:List[Dict[str, np.ndarray]], cfg=BaseRobotConfig()) -> None:
     self.cfg = cfg
 
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
     self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type](self.cfg.task))
     self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type](self.cfg.task))
-    self.MPC = ControllerOptions[self.cfg.controller_type](robot_names)
+    self.MPC = ControllerOptions[self.cfg.controller_type](robots_info)
 
   def open_gripper(self):
     self.gripper = 0.
