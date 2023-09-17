@@ -16,4 +16,4 @@ langchain
 ipywidgets
 streamlit
 tiktoken
-git+https://github.com/vateseif/Safe-panda-gym.git@feature/move_table
+git+https://github.com/vateseif/Safe-panda-gym.git@safe_rl-panda-gym
