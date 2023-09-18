@@ -20,7 +20,8 @@ class Simulation(AbstractSimulation):
 
     # simulation time
     self.t = 0.
-    self.robot = BaseRobot(self.env.robots_info,BaseRobotConfig(self.cfg.task))
+    env_info = (self.env.robots_info, self.env.objects_info)
+    self.robot = BaseRobot(env_info,BaseRobotConfig(self.cfg.task))
     # count number of tasks solved from a plan 
     self.task_counter = 0
     # bool for stopping simulation
@@ -33,9 +34,7 @@ class Simulation(AbstractSimulation):
 
   def _reinit_robot(self):
     """ Update simulation time and current state of MPC controller"""
-    self.robot.set_t(self.t)
-    # set x0 to measurements
-    self.robot.set_x0(self.observation)
+    self.robot.init_states(self.observation, self.t)
 
   def reset(self):
     # reset pand env

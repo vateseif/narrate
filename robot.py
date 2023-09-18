@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, List
+from typing import Tuple, List, Dict
 from llm import BaseLLM, simulate_stream
 from core import AbstractRobot
 from config.config import BaseRobotConfig, BaseLLMConfigs
@@ -9,14 +9,18 @@ from controller import ControllerOptions
 
 class BaseRobot(AbstractRobot):
 
-  def __init__(self, robots_info:List[Dict[str, np.ndarray]], cfg=BaseRobotConfig()) -> None:
+  def __init__(self, env_info:Tuple[List], cfg=BaseRobotConfig()) -> None:
     self.cfg = cfg
 
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
     self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type](self.cfg.task))
     self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type](self.cfg.task))
-    self.MPC = ControllerOptions[self.cfg.controller_type](robots_info)
+    self.MPC = ControllerOptions[self.cfg.controller_type](env_info)
+
+  def init_states(self, observation:Dict[str, np.ndarray], t:float):
+      """ Update simulation time and current state of MPC controller"""
+      self.MPC.init_states(observation, t)
 
   def open_gripper(self):
     self.gripper = 0.
@@ -28,7 +32,7 @@ class BaseRobot(AbstractRobot):
   def set_t(self, t:float):
     self.MPC.set_t(t)
 
-  def set_x0(self, observation: np.ndarray):
+  def set_x0(self, observation: Dict[str, np.ndarray]):
     self.MPC.set_x0(observation)
 
   def create_plan(self, user_task:str):

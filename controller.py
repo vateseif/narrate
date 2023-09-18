@@ -3,7 +3,7 @@ import numpy as np
 import casadi as ca
 from time import sleep
 from itertools import chain
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 from core import AbstractController
@@ -12,11 +12,11 @@ from config.config import BaseNMPCConfig
 
 class BaseController(AbstractController):
 
-  def __init__(self, robots_info:List[Dict[str, np.ndarray]], cfg=BaseNMPCConfig) -> None:
+  def __init__(self, env_info:Tuple[List], cfg=BaseNMPCConfig) -> None:
     super().__init__(cfg)
 
-    # init names of robots
-    self.robots_info = robots_info
+    # init info of robots and objects
+    self.robots_info, self.objects_info = env_info
 
     # init model dynamics
     self.init_model()
@@ -35,17 +35,31 @@ class BaseController(AbstractController):
     # inti do_mpc model
     self.model = do_mpc.model.Model(self.cfg.model_type) 
 
+    """ Parameter """
     # simulation time
     self.t = self.model.set_variable('parameter', 't')
+    # position of objects
+    self.objects = {} 
+    for o in self.objects_info:
+      self.objects[o['name']] = self.model.set_variable(var_type='_p', var_name=o['name'], shape=(3,1))
 
-    self.xi= []     # home position
-    self.x = []     # gripper position (x,y,z)
-    self.psi = []   # gripper psi (rotation around z axis)
-    self.dx = []    # gripper velocity (vx, vy, vz)
-    self.dpsi = []  # gripper rotational speed
-    self.u = []     # gripper control (=velocity)
-    self.u_psi = [] # gripper rotation control (=rotational velocity)
-    self.pose = []  # gripper pose [x, y, z, theta, gamma, psi]
+    # home position [x y, z]
+    self.x0 = {}
+    #for r in self.robots_info:
+    #  self.x0[f'x0{r["name"]}'] = self.model.set_variable(var_type='_p', var_name=f'x0{r["name"]}', shape=(3,1))
+    
+    # gripper pose [x, y, z, theta, gamma, psi]       
+    self.pose = []    
+    
+    """ State and input variables """
+    self.x = []       # gripper position (x,y,z)
+    self.psi = []     # gripper psi (rotation around z axis)
+    self.dx = []      # gripper velocity (vx, vy, vz)
+    self.dpsi = []    # gripper rotational speed
+    self.u = []       # gripper control (=velocity)
+    self.u_psi = []   # gripper rotation control (=rotational velocity)
+    
+    
 
     for i, r in enumerate(self.robots_info):
       # position (x, y, z)
@@ -66,10 +80,12 @@ class BaseController(AbstractController):
   
   def set_objective(self, mterm: ca.SX = ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
     # objective terms
-    #regularization = 0
-    #for i in range(len(self.robots_info)):
-    #  regularization += 
-    mterm = mterm # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
+    regularization = 0
+    for i, r in enumerate(self.robots_info):
+      #regularization += ca.norm_2(self.x[i] - r['x0'])**2
+      regularization += 0.1 * ca.norm_2(self.dx[i])**2
+      regularization += 0.1*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
+    mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
     lterm = 0.4*mterm
     # state objective
     self.mpc.set_objective(mterm=mterm, lterm=lterm)
@@ -113,11 +129,7 @@ class BaseController(AbstractController):
     self.init_mpc()
     # set functions
     # TODO: should the regularization be always applied?
-    regularization = 0
-    for i, r in enumerate(self.robots_info):
-      regularization += ca.norm_2(self.x[i] - r['x0'])**2
-      regularization += 0.1*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1])) # TODO 0.1 is harcoded
-    self.set_objective(regularization)
+    self.set_objective()
     self.set_constraints()
     # setup
     self.mpc.set_uncertainty_values(t=np.array([0.])) # init time to 0
@@ -152,23 +164,36 @@ class BaseController(AbstractController):
     # set x0 in MPC
     self.mpc.x0 = np.concatenate(x0)
 
-  def reset(self, observation: Dict[str, np.ndarray]) -> None:
+  def init_states(self, observation:Dict[str, np.ndarray], t:float):
+    """ Set the values the MPC initial states and variables """
+    # set mpc x0
+    self.set_x0(observation)
+    # set variable parameters
+    parameters = {'t': [t]}
+    parameters = parameters | {o['name']: [observation[o['name']]] for o in self.objects_info}
+    self.mpc.set_uncertainty_values(**parameters)
+
+  def reset(self, observation: Dict[str, np.ndarray], t:float = 0) -> None:
     """
       observation: robot observation from simulation containing position, angle and velocities 
     """
     # TODO
-    self.set_x0(observation)
+    self.init_states(observation, t)
     return
 
   def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=np.zeros(3)):
     #TODO the offset is still harcoded
     # put together variables for python code evaluation:    
+    
+    # initial state of robots before applying any action
+    x0 = {f'x0{r["name"]}': observation[f'robot{r["name"]}'][:3] for r in self.robots_info} 
+    # robot variable states (decision variables in the optimization problem)
     robots_states = {}
     for i, r in enumerate(self.robots_info):
       robots_states[f'x{r["name"]}'] = self.x[i] + self.R[i]@offset
       robots_states[f'dx{r["name"]}'] = self.dx[i]
     
-    eval_variables = self.eval_variables | robots_states | observation
+    eval_variables = self.eval_variables | robots_states | self.objects | x0
     # evaluate code
     evaluated_code = eval(code_str, eval_variables)
     return evaluated_code

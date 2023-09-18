@@ -101,16 +101,6 @@ class AbstractRobot(ObjBase):
   @abstractmethod
   def reset_gpt(self):
     return
-  
-  def reset_controller(self, x0:np.ndarray):
-    self.MPC.reset(x0)
-    return
-    
-  def reset(self, x0:np.ndarray):
-    self.reset_gpt()
-    self.reset_controller(x0)
-    return
-
 
 class AbstractSimulation(ObjBase):
   def __init__(self, cfg: AbstractSimulaitonConfig) -> None:
