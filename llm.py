@@ -16,7 +16,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 
 class Plan(BaseModel):
-  tasks: List[str] = Field(description="list of all tasks that the robot has to carry out")
+  tasks: List[str] = Field(description="list of all tasks to be carried out")
   
   def pretty_print(cls):
     pretty_msg = "Tasks:\n"
