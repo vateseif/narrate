@@ -82,6 +82,17 @@ TP_move_table = '''
 ]}
 '''
 
+TP_sponge = '''
+{ "tasks": [ 
+  "Left robot: move gripper above the sponge and avoid collision with sponge. Right robot: move gripper above the container handle.", 
+  "Left robot: move gripper to the sponge. Right robot: move gripper to the container handle.", 
+  "Left robot: close gripper. Right robot: close gripper",
+  "Left robot: move the gripper with sponge 0.1m above the container. Right robot: nothing", 
+  "Left robot: follow the container while staying 0.1m above it. Right robot: move towards the sink", 
+  "Left robot: open gripper to drop the sponge in the sink. Right robot: maintain position under the sponge."
+]}
+'''
+
 OD_mock = '''
 {
   "objective": "ca.norm_2(x - sponge)**2",
@@ -110,5 +121,6 @@ nmpcMockOptions = {
   "clean_plate": optimization_mock_plan_clean_plate,
   "OD": OD_mock,
   "OD_move_table": OD_move_table,
-  "move_table": TP_move_table
+  "move_table": TP_move_table,
+  "sponge": TP_sponge
 }
