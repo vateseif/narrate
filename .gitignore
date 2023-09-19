@@ -141,6 +141,7 @@ board/
 
 # videos
 *.mp4
+*.webm
 
 # images
 *.png
