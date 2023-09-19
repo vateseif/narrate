@@ -218,6 +218,7 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES = """
     - The MPC controller is used to generate a the trajectory of the gripper.
     - Casadi is used to program the MPC.
     - The variable x represents the gripper position in 3D, i.e. (x, y, z).
+    - The variables x0 represents the fixed position of the gripper before any action is applied.
     - The variable t represents the simulation time.
     - There are 4 cubes on the table.
     - All cubes have side length of 0.04685m.
@@ -234,6 +235,15 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES = """
       constraints = ["0.1 - ca.norm_2(x[2])"]
   ~~~
 
+  Here is example 2:
+  ~~~
+  Task: 
+      "Move the gripper 0.1m upwards"
+  Output:
+      objective = "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2"
+      constraints = []
+  ~~~
+
   {format_instructions}
   """
 
@@ -245,13 +255,14 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE = """
     - The MPC controller is used to generate the trajectory of the gripper.
     - Casadi is used to program the MPC.
     - The variable x represents the gripper position in 3D, i.e. (x, y, z).
+    - The variables x0 represents the fixed position of the gripper before any action is applied.
     - The variable t represents the simulation time.
     - There are a sponge and a plate on the table.
     - The sponge has the shape of a cube and has side length of 0.03m.
     - The plate has circular shape and has radius of 0.05m.
     - You MUST write every inequality constraint such that it is satisfied if it is <= 0:
         If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead.  
-    - The inequality constraints can be a function of x and/or t. 
+    - The inequality constraints can be a function of x, x0, plate, sponge and/or t. 
     - Use t in the inequalities especially when you need to describe motions of the gripper.
 
   Here is example 1:
@@ -270,6 +281,15 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE = """
       "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.1m"
   Output:
       objective = "ca.norm_2(x - np.array([t, 0.1, 0.1]))**2"
+      constraints = []
+  ~~~
+
+  Here is example 3:
+  ~~~
+  Task: 
+      "Move the gripper 0.1m upwards"
+  Output:
+      objective = "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2"
       constraints = []
   ~~~
 
@@ -368,14 +388,20 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_SPONGE = """
   """
 
 TP_PROMPTS = {
-  "cubes": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
+  "stack": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
+  "pyramid": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
+  "L": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
+  "reverse": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
   "clean_plate": OPTIMIZATION_TASK_PLANNER_PROMPT_CLEAN_PLATE,
   "move_table": OPTIMIZATION_TASK_PLANNER_PROMPT_MOVE_TABLE,
   "sponge": OPTIMIZATION_TASK_PLANNER_PROMPT_SPONGE
 }
 
 OD_PROMPTS = {
-  "cubes": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
+  "stack": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
+  "pyramid": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
+  "L": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
+  "reverse": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES,
   "clean_plate": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE,
   "move_table": NMPC_OPTIMIZATION_DESIGNER_PROMPT_MOVE_TABLE,
   "sponge": NMPC_OPTIMIZATION_DESIGNER_PROMPT_SPONGE
