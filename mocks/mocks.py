@@ -82,13 +82,14 @@ TP_move_table = '''
 ]}
 '''
 
+
 TP_sponge = '''
 { "tasks": [ 
-  "Left robot: move gripper above the sponge and avoid collision with sponge. Right robot: move gripper above the container handle.", 
+  "Left robot: move gripper above the sponge and avoid colliding with the sponge. Right robot: move gripper above the container handle.", 
   "Left robot: move gripper to the sponge. Right robot: move gripper to the container handle.", 
   "Left robot: close gripper. Right robot: close gripper",
-  "Left robot: move the gripper with sponge 0.1m above the container. Right robot: nothing", 
-  "Left robot: follow the container while staying 0.1m above it. Right robot: move towards the sink", 
+  "Left robot: move the gripper 0.1m above the container. Right robot: nothing", 
+  "Left robot: move the gripper to the sink while staying 0.1m above the container. Right robot: move the gripper to the sink", 
   "Left robot: open gripper to drop the sponge in the sink. Right robot: maintain position under the sponge."
 ]}
 '''
