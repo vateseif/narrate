@@ -4,10 +4,10 @@ from prompts.stack import *
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
-  env_name: str = "MoveTable"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  task: str = "move_table"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "L"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
-  fps: int = 30 # only used if save_video = True
+  fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
 
 
@@ -86,7 +86,7 @@ class BaseRobotConfig(AbstractRobotConfig):
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
   controller_type: str = "optimization"  # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 15
-  wait_s: float = 6. # wait time after a new MPC formualtion is applied
+  wait_s: float = 30. # wait time after a new MPC formualtion is applied
 
 
 
