@@ -42,7 +42,7 @@ optimization_mock_plan_L = '''
   "move gripper to cube_1 and avoid collisions with every cube",
   "close gripper",
   "move gripper behind cube_2 and avoid colliding with cube_1, cube_3, cube_4",
-  "open gripper",
+  "open gripper"
 ]} 
 '''
 
@@ -70,7 +70,7 @@ optimization_mock_plan_clean_plate = '''
 {"tasks":[
   "move the gripper to the sponge",
   "close gripper",
-  "move the gripper up 0.03m with the sponge avoiding collision with the plate",
+  "move the gripper upwards 0.05m",
   "move the gripper 0.02m above the plate avoiding collision with the plate",
   "move the gripper in circular motion over the plate"
 ]}
