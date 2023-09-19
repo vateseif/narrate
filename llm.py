@@ -1,5 +1,5 @@
 from time import sleep
-from typing import List
+from typing import List, Optional
 from core import AbstractLLM, AbstractLLMConfig
 from mocks.mocks import nmpcMockOptions
 
@@ -64,7 +64,7 @@ class StreamHandler(BaseCallbackHandler):
     self.container.markdown(pretty_text, unsafe_allow_html=False)
     session_state.messages.append({"type": self.avatar, "content": pretty_text})
 
-def simulate_stream(avatar:str, text:str):
+def simulate_stream(avatar:str, text:str, pretty_text:Optional[str]=None):
   """ Function used to simulate stream in case of harcoded GPT responses """
   placeholder = empty()
   # Simulate stream of response with milliseconds delay
@@ -74,10 +74,13 @@ def simulate_stream(avatar:str, text:str):
       sleep(0.05)
       # Add a blinking cursor to simulate typing
       placeholder.markdown(partial_text + "▌")
-  placeholder.markdown(text)
-  # return AI message
-  session_state.messages.append({"type": avatar, "content":text}) # TODO 
-
+  # store message in streamlit
+  if pretty_text is None:
+    placeholder.markdown(text)
+    session_state.messages.append({"type": avatar, "content":text})
+  else:
+    placeholder.markdown(pretty_text)
+    session_state.messages.append({"type": avatar, "content":pretty_text})  
 
 ParsingModel = {
   "plan": Plan,
@@ -109,7 +112,9 @@ class BaseLLM(AbstractLLM):
       model_message = self.model(self.messages)
     else:
       model_message = AIMessage(content=nmpcMockOptions[self.cfg.mock_task])
-      simulate_stream(self.cfg.avatar, self.parser.parse(model_message.content).pretty_print())
+      text = model_message.content
+      pretty_text = self.parser.parse(text).pretty_print()
+      simulate_stream(self.cfg.avatar, text, pretty_text)
     self.messages.append(model_message)
     #print(f"\33[92m {model_message.content} \033[0m \n")
     return self.parser.parse(model_message.content)
