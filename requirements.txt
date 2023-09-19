@@ -17,4 +17,4 @@ ipywidgets
 streamlit
 tiktoken
 opencv-python
-git+https://github.com/vateseif/Safe-panda-gym.git@feature/sponge
+git+https://github.com/vateseif/Safe-panda-gym.git@safe_rl-panda-gym
