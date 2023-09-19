@@ -27,10 +27,20 @@ if "sim" not in st.session_state:
   # 1 = There is a plan the TP can execute. A button pops up to allow the user to execute the plan
   # 2 = Trigger the execution of the plan
   st.session_state.stage = 0
+  # init state machine state:
+  # 0 = You can press start to start recording frames
+  # 1 = You can press stop to save the recording or cacel the recording
+  # 2 = Saves the recording and stops saving frames
+  # 3 = cancels the recording and stops saving frames
+  st.session_state.recording = 0
 
 def set_state(i):
   # Function to update the state machine stage
   st.session_state.stage = i
+
+def set_recording_state(i):
+  # Function to update the recording state machine stage
+  st.session_state.recording = i
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -66,3 +76,21 @@ if st.session_state.stage == 2:
   with st.chat_message("OD", avatar=avatars["OD"]):
     st.session_state.sim.execute_plan()
   st.session_state.stage = 0
+
+if st.session_state.recording == 0:
+  st.sidebar.button('Start recording', on_click=set_recording_state, args=[1])
+
+if st.session_state.recording == 1:
+  st.session_state.sim.save_video = True
+  st.sidebar.button('Stop recording', on_click=set_recording_state, args=[2])
+  st.sidebar.button('Cancel recording', on_click=set_recording_state, args=[3])
+
+if st.session_state.recording == 2:
+  st.session_state.sim.save_video = False
+  st.session_state.sim._save_video()
+  set_recording_state(0)
+
+if st.session_state.recording == 3:
+  st.session_state.sim.save_video = False
+  st.session_state.sim.frames_list = []
+  set_recording_state(0)

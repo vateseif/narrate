@@ -1,13 +1,12 @@
 import os
 import sys
+import cv2
 import threading
 import numpy as np
 from time import sleep
 from typing import Optional
 from datetime import datetime
 from streamlit import spinner
-import matplotlib.pyplot as plt
-from matplotlib.animation import FFMpegWriter
 
 from robot import BaseRobot
 from core import AbstractSimulation, BASE_DIR
@@ -26,11 +25,12 @@ class Simulation(AbstractSimulation):
     self.task_counter = 0
     # bool for stopping simulation
     self.stop_thread = False
+    # whether to save frame (initialized to false)
+    self.save_video = False
     # init list of RGB frames if wanna save video
-    if self.cfg.save_video:
-      self.frames_list = []
-      self.video_name = f"{self.cfg.env_name}_{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
-      self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
+    self.frames_list = []
+    self.video_name = f"{self.cfg.env_name}_{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
+    self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
 
   def _reinit_robot(self):
     """ Update simulation time and current state of MPC controller"""
@@ -44,8 +44,7 @@ class Simulation(AbstractSimulation):
     # count number of tasks solved from a plan 
     self.task_counter = 0
     # init list of RGB frames if wanna save video
-    if self.cfg.save_video:
-      self.frames_list = []
+    self.frames_list = []
 
   def create_plan(self, user_task:str, solve:bool=False): 
     sleep(1)
@@ -68,7 +67,7 @@ class Simulation(AbstractSimulation):
     # apply action
     self.observation, _, done, _ = self.env.step(action)
     # store RGB frames if wanna save video
-    if self.cfg.save_video:
+    if self.save_video:
       frame = self.env.render("rgb_array")
       self.frames_list.append(frame)
 
@@ -80,26 +79,28 @@ class Simulation(AbstractSimulation):
     self.stop_thread = True
     self.thread.join()
     # init list of RGB frames if wanna save video
-    if self.cfg.save_video:
+    if self.save_video:
       self._save_video()
     # exit
     sys.exit()
       
 
   def _save_video(self):
-    # Create a figure and axis for plotting.
-    fig, ax = plt.subplots()
-    # Initialize the writer for saving the video.
-    writer = FFMpegWriter(fps=self.cfg.fps)
-    # Iterate through your list of RGB images and add them to the video.
-    with writer.saving(fig, self.video_path, dpi=200):
-      for i, rgb_image in enumerate(self.frames_list):
-        ax.clear()  # Clear the previous frame.
-        ax.imshow(rgb_image)  # Display the current RGB image.
-        plt.axis("off")  # Turn off axis labels and ticks.
-        # You can optionally add a title or annotation to each frame.
-        ax.set_title(f"Frame {i + 1}")
-        writer.grab_frame()  # Save the current frame to the video.
+    # Define the parameters
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    width, height = 1920, 1920  # Adjust as needed
+    # Create a VideoWriter object
+    out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (width, height))
+    # Write frames to the video
+    for frame in self.frames_list:
+      # Ensure the frame is in the correct format (RGBA)
+      if frame.shape[2] == 3:
+          frame = cv2.cvtColor(frame, cv2.COLOR_RGB2RGBA)
+      # Convert the frame to BGR format (required by VideoWriter)
+      frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+      out.write(frame_bgr)
+    # Release the VideoWriter
+    out.release()
 
   def _solve_task(self, plan:str):
     wait_s = self.robot.next_plan(plan, self.observation)
