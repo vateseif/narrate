@@ -210,39 +210,59 @@ NMPC_OBJECTIVE_DESIGNER_PROMPT = """
 
 
 NMPC_OPTIMIZATION_DESIGNER_PROMPT_CUBES = """
-  You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling a robot manipulator. 
-  At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
+You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling a robot manipulator. 
+At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
 
-  This is the scene description:
-    - The robot manipulator sits on a table and its gripper starts at a home position.
-    - The MPC controller is used to generate a the trajectory of the gripper.
-    - Casadi is used to program the MPC.
-    - The variable x represents the gripper position in 3D, i.e. (x, y, z).
-    - The variables x0 represents the fixed position of the gripper before any action is applied.
-    - The variable t represents the simulation time.
-    - There are 4 cubes on the table.
-    - All cubes have side length of 0.04685m.
-    - You do not have to add constraints, but if you do they must be inequality constraints.
-    - Write every inequality constraint such that it is satisfied if it is <= 0.
+This is the scene description:
+  - The robot manipulator sits on a table and its gripper starts at a home position.
+  - The MPC controller is used to generate the trajectory of the gripper.
+  - Casadi is used to program the MPC.
+  - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
+  - The variables `x0` represents the fixed position of the gripper before any action is applied.
+  - The variable `t` represents the simulation time.
+  - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
+  - All cubes have side length of 0.04685m.
+
+Rules:
+  - You MUST write every equality constraints such that it is satisfied if it is = 0:
+      If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
+  - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+      If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
+  - You MUST provide the constraints as a list of strings.
+  - The objective and constraints can be a function of `x`, `sponge`, `plate` and/or `t`. 
+  - Use `t` in the inequalities especially when you need to describe motions of the gripper.
     
 
-  Here is example 1:
-  ~~~
-  Task: 
-      "move the gripper 0.0465m behind cube_1 and keep gripper at a height higher than 0.1m"
-  Output:
-      objective = "ca.norm_2(x - (cube_1 + np.array([-0.04685, 0, 0])))**2"
-      constraints = ["0.1 - ca.norm_2(x[2])"]
-  ~~~
+Example 1:
+~~~
+Task: 
+    "move gripper 0.03m behind the cube_1 and keep gripper at a height higher than 0.1m"
+Output:
+    "objective": "ca.norm_2(x - (cube_1 + np.array([-0.03, 0, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.1 - ca.norm_2(x[2])"]
+~~~
+Notice how the inequality constraint holds if <= 0.
 
-  Here is example 2:
-  ~~~
-  Task: 
-      "Move the gripper 0.1m upwards"
-  Output:
-      objective = "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2"
-      constraints = []
-  ~~~
+Example 2:
+~~~
+Task: 
+    "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m"
+Output:  
+    "objective": "ca.norm_2(x_left[0] - t)**2",
+    "equality_constraints": ["np.array([0.2, 0.2]) - x[1:]"],
+    "inequality_constraints": []
+~~~
+
+Example 3:
+~~~
+Task: 
+    "Move the gripper 0.1m upwards"
+Output:
+    "objective": "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": []
+~~~
 
   {format_instructions}
   """
@@ -251,141 +271,176 @@ NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE = """
   You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling a robot manipulator. 
   At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
 
-  This is the scene description:
-    - The MPC controller is used to generate the trajectory of the gripper.
-    - Casadi is used to program the MPC.
-    - The variable x represents the gripper position in 3D, i.e. (x, y, z).
-    - The variables x0 represents the fixed position of the gripper before any action is applied.
-    - The variable t represents the simulation time.
-    - There are a sponge and a plate on the table.
-    - The sponge has the shape of a cube and has side length of 0.03m.
-    - The plate has circular shape and has radius of 0.05m.
-    - You MUST write every inequality constraint such that it is satisfied if it is <= 0:
-        If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead.  
-    - The inequality constraints can be a function of x, x0, plate, sponge and/or t. 
-    - Use t in the inequalities especially when you need to describe motions of the gripper.
+This is the scene description:
+  - The MPC controller is used to generate the trajectory of the gripper.
+  - Casadi is used to program the MPC.
+  - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
+  - The variables `x0` represents the fixed position of the gripper before any action is applied.
+  - The variable `t` represents the simulation time.
+  - There variables `sponge` and `plate` represent the 3D position of a sponge and a plate located on the table.
+  - The sponge has the shape of a cube and has side length of 0.03m.
+  - The plate has circular shape and has radius of 0.05m.
 
-  Here is example 1:
-  ~~~
-  Task: 
-      "move the gripper 0.03m behind sponge and keep gripper at a height higher than 0.1m"
-  Output:
-      objective = "ca.norm_2(x - (sponge + np.array([-0.03, 0, 0])))**2"
-      constraints = ["0.1 - ca.norm_2(x[2])"]
-  ~~~
-  Notice how the inequality constraint holds if <= 0.
+Rules:
+  - You MUST write every equality constraints such that it is satisfied if it is = 0:
+      If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
+  - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+      If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
+  - You MUST provide the constraints as a list of strings.
+  - The objective and constraints can be a function of `x`, `sponge`, `plate` and/or `t`. 
+  - Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
-  Here is example 2:
-  ~~~
-  Task: 
-      "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.1m"
-  Output:
-      objective = "ca.norm_2(x - np.array([t, 0.1, 0.1]))**2"
-      constraints = []
-  ~~~
+Example 1:
+~~~
+Task: 
+    "move gripper 0.03m behind the songe and keep gripper at a height higher than 0.1m"
+Output:
+    "objective": "ca.norm_2(x - (sponge + np.array([-0.03, 0, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.1 - ca.norm_2(x[2])"]
+~~~
+Notice how the inequality constraint holds if <= 0.
 
-  Here is example 3:
-  ~~~
-  Task: 
-      "Move the gripper 0.1m upwards"
-  Output:
-      objective = "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2"
-      constraints = []
-  ~~~
+Example 2:
+~~~
+Task: 
+    "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m"
+Output:  
+    "objective": "ca.norm_2(x_left[0] - t)**2",
+    "equality_constraints": ["np.array([0.2, 0.2]) - x[1:]"],
+    "inequality_constraints": []
+~~~
 
-  {format_instructions}
-  """
+Example 3:
+~~~
+Task: 
+    "Move the gripper 0.1m upwards"
+Output:
+    "objective": "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": []
+~~~
 
+{format_instructions}
+"""
 
 NMPC_OPTIMIZATION_DESIGNER_PROMPT_MOVE_TABLE = """
-  You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling 2 robot manipulators. 
-  At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
+You are a helpful assistant in charge of designing the optimization problem of a Model Predictive Controller (MPC) that is controlling 2 robot manipulators. 
+At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
 
-  This is the scene description:
-    - The MPC controller is used to generate the trajectory of the gripper.
-    - Casadi is used to program the MPC.
-    - The variable x_left represents the gripper position of the left robot in 3D, i.e. (x, y, z).
-    - The variable x_right represents the gripper position of the right robot in 3D, i.e. (x, y, z).
-    - The variable t represents the simulation time.
-    - There is a table of length 0.5m and width of 0.25m.
-    - The table has 2 handles called: handle_left and handle_right.
-    - You MUST write every inequality constraint such that it is satisfied if it is <= 0:
-        If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead.  
-    - The inequality constraints can be a function of x_left, x_right and/or t. 
-    - Use t in the inequalities especially when you need to describe motions of the gripper.
+This is the scene description:
+  - The MPC controller is used to generate the trajectory of the gripper.
+  - Casadi is used to program the MPC.
+  - The variable `x_left` represents the gripper position of the left robot in 3D, i.e. (x, y, z).
+  - The variable `x_right` represents the gripper position of the right robot in 3D, i.e. (x, y, z).
+  - The variables `x0_left` and `x0_right` represent the fixed position of the grippers before any action is applied.
+  - There is a table of length 0.5m, width of 0.25m and height 0.25m. The variable `table` represents the position of the table center in 3D, i.e. (x,y,z)
+  - The table has 4 legs with heiht of 0.25m.
+  - The variables `handle_left` and `handle_right` represent the position of the table handles. The handles are located on top of the table.
+  - The variable `obstacle` represents the position of an obstacle. The obstacle is on the floor and has cylindrical shape with radius 0.07m.
+  - Both the obstacle and the table are rotated such that they are parallel to the y axis.
+  - The variable `t` represents the simulation time.
 
-  Here is example 1:
-  ~~~
-  Task: 
-      "move the left gripper 0.03m behind handle_left and keep gripper at a height higher than 0.1m"
-  Output:
-      objective = "ca.norm_2(x_left - (handle_left + np.array([-0.03, 0, 0])))**2"
-      constraints = ["0.1 - ca.norm_2(x_left[2])"]
-  ~~~
-  Notice how the inequality constraint holds if <= 0.
+Rules:
+  - You MUST write every equality constraints such that it is satisfied if it is = 0:
+      If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
+  - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+      If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
+  - You MUST provide the constraints as a list of strings.
+  - The objective and constraints can be a function of `x_left`, `x_right`, `table`, `handle_left`, `handle_right` and/or `t`. 
+  - Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
-  Here is example 2:
-  ~~~
-  Task: 
-      "Move the left gripper at constant speed along the x axis while keeping y and z fixed at 0.1m and the right gripper in the opposite direction"
-  Output:
-      objective = "ca.norm_2(x_left - np.array([t, 0.1, 0.1]))**2 + ca.norm_2(x_right - np.array([-t, 0.1, 0.1]))**2"
-      constraints = []
-  ~~~
+Example 1:
+~~~
+Task: 
+    "move the left gripper 0.03m behind handle_left and keep gripper at a height higher than 0.1m"
+Output:
+    "objective": "ca.norm_2(x_left - (handle_left + np.array([-0.03, 0, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.1 - ca.norm_2(x_left[2])"]
+~~~
+Notice how the inequality constraint holds if <= 0.
 
-  {format_instructions}
-  """
+Example 2:
+~~~
+Task: 
+    "Move the left gripper at constant speed along the x axis while keeping y and z fixed at 0.2m and the right gripper in the opposite direction"
+Output:  
+    "objective": "ca.norm_2(x_left[0] - t)**2 + ca.norm_2(x_right[0] + t)**2",
+    "equality_constraints": ["np.array([0.2, 0.2]) - x_left[1:]", "np.array([0.2, 0.2]) - x_right[1:]"],
+    "inequality_constraints": []
+~~~
+
+Example 3:
+~~~
+Task: 
+    "Move the left gripper 0.1m upwards and the right gripper 0.2m to the right"
+Output:
+    "objective": "ca.norm_2(x_left - (x0_left + np.array([0, 0, 0.1])))**2 + ca.norm_2(x_right - (x0_right + np.array([0, -0.2, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": []
+~~~
+
+{format_instructions}
+"""
 
 NMPC_OPTIMIZATION_DESIGNER_PROMPT_SPONGE = """
-  You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling 2 robot manipulators. 
-  At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
+You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling 2 robot manipulators. 
+At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
 
-  This is the scene description:
-    - The MPC controller is used to generate the trajectory of the robot grippers.
-    - Casadi is used to program the MPC.
-    - The variable x_left represents the gripper position of the left robot in 3D, i.e. (x, y, z).
-    - The variable x_right represents the gripper position of the right robot in 3D, i.e. (x, y, z).
-    - The variables x0_left and x0_right represent the fixed position of the grippers before any action is applied.
-    - The variable t represents the simulation time.
-    - These are the objects you can interact with: container, sponge, sink.
-    - The container has circular shape with radius 0.05m, the sponge has cubic shape with side length of 0.05m.
-    - The container can only be picked from the container_handle which is located at +[0.05, 0, 0] compared to the container.
-    - You MUST write every inequality constraint such that it is satisfied if it is <= 0:
-        If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead.  
-    - The inequality constraints can be a function of x_left, x_right, sponge, container, container_handle, sink and/or t. 
-    - Use t in the inequalities especially when you need to describe motions of the gripper.
+This is the scene description:
+  - The MPC controller is used to generate the trajectory of the robot grippers.
+  - Casadi is used to program the MPC.
+  - The variable `x_left` represents the gripper position of the left robot in 3D, i.e. (x, y, z).
+  - The variable `x_right` represents the gripper position of the right robot in 3D, i.e. (x, y, z).
+  - The variables `x0_left` and `x0_right` represent the fixed position of the grippers before any action is applied.
+  - The variables `container`, `sponge` and `sink` represent the position of a container, a sponge and a sink.
+  - The container has circular shape with radius 0.05m, the sponge has cubic shape with side length of 0.05m.
+  - The container can only be picked from the `container_handle` which is located at +[0.05, 0, 0] compared to the container.
+  - The variable `t` represents the simulation time.
 
-  Here is example 1:
-  ~~~
-  Task: 
-      "move the left gripper 0.03m above the container handle and keep gripper at a height higher than 0.1m"
-  Output:
-      objective = "ca.norm_2(x_left - (container_handle + np.array([0, 0, 0.03])))**2"
-      constraints = ["0.1 - ca.norm_2(x_left[2])"]
-  ~~~
-  Notice how the inequality constraint holds if <= 0.
+Rules:
+  - You MUST write every equality constraints such that it is satisfied if it is = 0:
+      If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
+  - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+      If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
+  - You MUST provide the constraints as a list of strings.
+  - The objective and constraints can be a function of `x_left`, `x_right`, `container`, `container_handle`, `sponge`, `sink` and/or `t`. 
+  - Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
-  Here is example 2:
-  ~~~
-  Task: 
-      "Move the left gripper at constant speed along the x axis while keeping y and z fixed at 0.1m and the right gripper in the opposite direction"
-  Output:
-      objective = "ca.norm_2(x_left - np.array([t, 0.1, 0.1]))**2 + ca.norm_2(x_right - np.array([-t, 0.1, 0.1]))**2"
-      constraints = []
-  ~~~
+Example 1:
+~~~
+Task: 
+    "move the left gripper 0.03m behind container_handle and keep gripper at a height higher than 0.1m"
+Output:
+    "objective": "ca.norm_2(x_left - (container_handle + np.array([-0.03, 0, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.1 - ca.norm_2(x_left[2])"]
+~~~
+Notice how the inequality constraint holds if <= 0.
 
-  Here is example 3:
-  ~~~
-  Task: 
-      "Move the left gripper 0.1m upwards and the right gripper 0.2m to the right"
-  Output:
-      objective = "ca.norm_2(x_left - (x0_left + np.array([0, 0, 0.1])))**2 + ca.norm_2(x_right - (x0_right + np.array([0, -0.2, 0])))**2"
-      constraints = []
-  ~~~
+Example 2:
+~~~
+Task: 
+    "Move the left gripper at constant speed along the x axis while keeping y and z fixed at 0.2m and the right gripper in the opposite direction"
+Output:  
+    "objective": "ca.norm_2(x_left[0] - t)**2 + ca.norm_2(x_right[0] + t)**2",
+    "equality_constraints": ["np.array([0.2, 0.2]) - x_left[1:]", "np.array([0.2, 0.2]) - x_right[1:]"],
+    "inequality_constraints": []
+~~~
 
+Example 3:
+~~~
+Task: 
+    "Move the left gripper 0.1m upwards and the right gripper 0.2m to the right"
+Output:
+    "objective": "ca.norm_2(x_left - (x0_left + np.array([0, 0, 0.1])))**2 + ca.norm_2(x_right - (x0_right + np.array([0, -0.2, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": []
+~~~
 
-  {format_instructions}
-  """
+{format_instructions}
+"""
 
 TP_PROMPTS = {
   "stack": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
