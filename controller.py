@@ -83,8 +83,8 @@ class BaseController(AbstractController):
     regularization = 0
     for i, r in enumerate(self.robots_info):
       #regularization += ca.norm_2(self.x[i] - r['x0'])**2
-      regularization += 0.1 * ca.norm_2(self.dx[i])**2
-      regularization += 0.1*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
+      regularization += .4 * ca.norm_2(self.dx[i])**2
+      regularization += .4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
     mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
     lterm = 0.4*mterm
     # state objective
@@ -206,8 +206,9 @@ class BaseController(AbstractController):
     action = []
     for i in range(len(self.robots_info)):
       ee_displacement = u0[4*i:4*i+3]     # positon control
-      theta_rotation = [0.]
-      gamma_rotation = [-self.pose[i][4] * 1]  # P control for angle around y axis # TODO: 1. is a hardcoded gain
+      theta_regularized = self.pose[i][3] if self.pose[i][3]>=0 else self.pose[i][3] + 2*np.pi 
+      theta_rotation = [(np.pi - theta_regularized)*1.5]
+      gamma_rotation = [-self.pose[i][4] * 1.5]  # P control for angle around y axis # TODO: 1. is a hardcoded gain
       psi_rotation = [u0[4*i+3]]            # rotation control
       action.append(np.concatenate((ee_displacement, theta_rotation, gamma_rotation, psi_rotation)))
     
@@ -243,8 +244,16 @@ class OptimizationController(BaseController):
     regulatization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
     self.set_objective(self._eval(optimization.objective, observation) + regulatization)
     # set base constraint functions
-    constraints = [[*map(lambda const: self._eval(c, observation, const), self.gripper_offsets)] for c in optimization.constraints]
-    self.set_constraints(list(chain(*constraints)))
+    constraints = []
+    # positive equality constraint
+    constraints += [self._eval(c, observation) for c in optimization.equality_constraints]
+    # negative equality constraint
+    constraints += [-self._eval(c, observation) for c in optimization.equality_constraints]
+    # inequality constraints
+    inequality_constraints = [[*map(lambda const: self._eval(c, observation, const), self.gripper_offsets)] for c in optimization.inequality_constraints]
+    constraints += list(chain(*inequality_constraints))
+    # set constraints
+    self.set_constraints(constraints)
     # setup
     self.mpc.set_uncertainty_values(t=np.array([0.])) # TODO this is badly harcoded
     self.mpc.setup()

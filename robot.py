@@ -52,12 +52,15 @@ class BaseRobot(AbstractRobot):
       self.close_gripper()
       simulate_stream("OD", "\n```\n close_gripper()\n```\n")
       return 1.
-    # design optimization functions
-    optimization = self.OD.run(plan)
-    # apply optimization functions to MPC
-    self.MPC.apply_gpt_message(optimization, observation)
-    return self.cfg.wait_s
-
+    # catch if reply cannot be parsed. i.e. when askin the LLM a question
+    try:
+      # design optimization functions
+      optimization = self.OD.run(plan)
+      # apply optimization functions to MPC
+      self.MPC.apply_gpt_message(optimization, observation)
+      return self.cfg.wait_s
+    except:
+      return 1.
 
   def step(self):
     action = []

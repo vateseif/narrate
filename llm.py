@@ -32,13 +32,16 @@ class Objective(BaseModel):
 
 class Optimization(BaseModel):
   objective: str = Field(description="objective function to be applied to MPC")
-  constraints: List[str] = Field(description="constraints to be applied to MPC")
+  equality_constraints: List[str] = Field(description="equality constraints to be applied to MPC")
+  inequality_constraints: List[str] = Field(description="inequality constraints to be applied to MPC")
 
   def pretty_print(cls):
     pretty_msg = "Applying the following MPC fomulation:\n```\n"
     pretty_msg += f"min {cls.objective}\n"
     pretty_msg += f"s.t.\n"
-    for c in cls.constraints:
+    for c in cls.equality_constraints:
+      pretty_msg += f"\t {c} = 0\n"
+    for c in cls.inequality_constraints:
       pretty_msg += f"\t {c} <= 0\n"
     return pretty_msg+"\n```\n"
 
@@ -113,7 +116,10 @@ class BaseLLM(AbstractLLM):
     else:
       model_message = AIMessage(content=nmpcMockOptions[self.cfg.mock_task])
       text = model_message.content
-      pretty_text = self.parser.parse(text).pretty_print()
+      try:
+        pretty_text = self.parser.parse(text).pretty_print()
+      except:
+        pretty_text = ""
       simulate_stream(self.cfg.avatar, text, pretty_text)
     self.messages.append(model_message)
     #print(f"\33[92m {model_message.content} \033[0m \n")
