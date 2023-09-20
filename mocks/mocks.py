@@ -76,9 +76,24 @@ optimization_mock_plan_clean_plate = '''
 ]}
 '''
 
+#TP_move_table = '''
+#{"tasks":[
+#  "left robot: move gripper to the left handle; right robot: move gripper to the right handle",
+#  "close gripper",
+#  "move the grippers backwards 0.5m. Make sure that the grippers remain at the same distance from each other. Since there is the obstacle, you have to move the grippers such that the legs of the table don't collide with the obstacle",
+#  "open gripper"
+#]}
+#'''
+
 TP_move_table = '''
 {"tasks":[
-  "move left gripper to left handle and right gripper to right handle"
+  "Move the left gripper to the left handle and move the right gripper to the right handle",
+  "Keep the grippers at the handle and make sure to maintain the same distance between the grippers",
+  "You now can close the grippers",
+  "move the grippers 0.15m upwards while keeping the same distance between the grippers",
+  "Move the grippers 0.5m backwards while making sure the grippers keep the same distance to each other",
+  "Move the grippers 0.15m downwards while keeping the same distance between the grippers",
+  "You can now open the grippers"
 ]}
 '''
 
