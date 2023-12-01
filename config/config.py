@@ -20,7 +20,7 @@ class ObjectivePlanLLMConfig(AbstractLLMConfig):
 
 class OptimizationPlanLLMConfig(AbstractLLMConfig):
   def __init__(self, task:str=None) -> None:
-    self.mock_task = task # TODO wtf this is shit
+    self.mock_task = None # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   avatar: str = "TP"
   parsing: str = "plan"
