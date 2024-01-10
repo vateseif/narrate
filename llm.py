@@ -60,7 +60,7 @@ class StreamHandler(BaseCallbackHandler):
   def on_llm_new_token(self, token: str, *, chunk, run_id, parent_run_id=None, **kwargs):
     super().on_llm_new_token(token, chunk=chunk, run_id=run_id, parent_run_id=parent_run_id, **kwargs)
     self.text += token
-    self.container.write(self.text + "▌")
+    self.container.write(self.text + "|")
 
   def on_llm_end(self, response, **kwargs):
     pretty_text = self.parser.parse(self.text).pretty_print()
