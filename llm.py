@@ -76,7 +76,7 @@ def simulate_stream(avatar:str, text:str, pretty_text:Optional[str]=None):
       partial_text += chunk
       sleep(0.05)
       # Add a blinking cursor to simulate typing
-      placeholder.markdown(partial_text + "▌")
+      placeholder.markdown(partial_text + "|")
   # store message in streamlit
   if pretty_text is None:
     placeholder.markdown(text)
