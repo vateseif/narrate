@@ -1,11 +1,11 @@
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
-from prompts.stack import *
+from prompts.prompts import *
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  task: str = "L"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  task: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
@@ -25,7 +25,7 @@ class OptimizationPlanLLMConfig(AbstractLLMConfig):
   avatar: str = "TP"
   parsing: str = "plan"
   model_name: str = "gpt-4"
-  streaming: bool = True
+  streaming: bool = False
   temperature: float = 0.7
 
 class ObjectiveLLMConfig(AbstractLLMConfig):

@@ -38,7 +38,7 @@ You are a helpful assistant in charge of controlling a robot manipulator.
 Your task is that of creating a full and precise plan of what the robot has to do once a command from the user is given to you.
 This is the description of the scene:
   - There are 4 different cubes that you can manipulate: cube_1, cube_2, cube_3, cube_4
-  - All cubes have the same side length of 0.08m
+  - All cubes have the same side length of 0.09m
   - When moving the gripper specify which cubes it has to avoid collisions with
   - Make sure to avoid the cubes from colliding with each other when you pick and place them
 
@@ -229,8 +229,10 @@ This is the scene description:
   - Casadi is used to program the MPC.
   - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
   - The variables `x0` represents the fixed position of the gripper before any action is applied.
+  - The orientation of the gripper around the z-axis is defined by variable `psi`.
   - The variable `t` represents the simulation time.
   - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
+  - The orientations around the z-axis of each cube are defined by variables `cube_1_psi` `cube_2_psi` `cube_3_psi` `cube_4_psi`.
   - All cubes have side length of 0.04685m.
 
 Rules:
@@ -239,7 +241,7 @@ Rules:
   - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
       If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
   - You MUST provide the constraints as a list of strings.
-  - The objective and constraints can be a function of `x`, `sponge`, `plate` and/or `t`. 
+  - The objective and constraints can be a function of `x`, `cube_1`, `cube_1_psi`, ... and/or `t`. 
   - Use `t` in the inequalities especially when you need to describe motions of the gripper.
     
 

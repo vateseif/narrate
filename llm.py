@@ -6,7 +6,7 @@ from mocks.mocks import nmpcMockOptions
 import tiktoken
 from streamlit import empty, session_state
 from pydantic import BaseModel, Field
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, AIMessage
 from langchain.prompts.chat import SystemMessagePromptTemplate
 from langchain.output_parsers import PydanticOutputParser
@@ -122,5 +122,5 @@ class BaseLLM(AbstractLLM):
         pretty_text = ""
       simulate_stream(self.cfg.avatar, text, pretty_text)
     self.messages.append(model_message)
-    #print(f"\33[92m {model_message.content} \033[0m \n")
+    print(f"\33[92m {model_message.content} \033[0m \n")
     return self.parser.parse(model_message.content)
