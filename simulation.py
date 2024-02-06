@@ -1,6 +1,8 @@
 import os
 import sys
 import cv2
+import gym
+import panda_gym
 import threading
 import numpy as np
 from time import sleep
@@ -15,7 +17,14 @@ from config.config import SimulationConfig, BaseRobotConfig
 
 class Simulation(AbstractSimulation):
   def __init__(self, cfg=SimulationConfig()) -> None:
-    super().__init__(cfg)
+    #super().__init__(cfg)
+
+    self.cfg = cfg
+    # init env
+    self.env = gym.make(f"PandaCubes-v2", render=True)#gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
+    # init robots
+    # count number of tasks solved from a plan 
+    self.task_counter = 0
 
     # simulation time
     self.t = 0.
@@ -125,6 +134,11 @@ class Simulation(AbstractSimulation):
   def run(self):
     """ Executes self._run() in a separate thread"""
     self.thread = threading.Thread(target=self._run)
-    self.thread.daemon = True  # Set the thread as a daemon (will exit when the main program ends)
+    #self.thread.daemon = True  # Set the thread as a daemon (will exit when the main program ends)
     self.thread.start()
     return
+  
+
+if __name__=="__main__":
+  s = Simulation()
+  s.run()

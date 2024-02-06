@@ -1,11 +1,7 @@
-tqdm==4.65.0
-cvxpy==1.3.2
-torch==2.0.0
-numpy==1.24.2
-Mosek==10.0.40
-cvxpygen==0.2.3
-matplotlib==3.7.1
-gymnasium==0.29.0
+tqdm
+numpy
+matplotlib
+gymnasium
 ipympl
 pydantic
 do-mpc
