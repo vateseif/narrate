@@ -1,96 +1,54 @@
-import streamlit as st
+import gym
+import panda_gym
+import asyncio
 from time import sleep
-from langchain.schema import HumanMessage
+from queue import Queue
+from robot import BaseRobot
+from config.config import BaseRobotConfig
 
-from simulation import Simulation
-from llm import simulate_stream
 
-# Init streamlit page
-st.title("Language to Optimization")
+class Simulation:
+    def __init__(self) -> None:
+        self.env = gym.make(f"PandaCubes-v2", render=True)
+        self.robot = BaseRobot((self.env.robots_info, self.env.objects_info),BaseRobotConfig('L'))
 
-# Create sidebar
-st.sidebar.title("Choose model")
+        self.q = asyncio.Queue()
 
-# Add a sidebar radio button to select the message type
-model = st.sidebar.radio("Select the model to talk to", ["Task Planner", "Optimization Designer"])
+    def reset(self):
+        self.t = 0.
+        self.obs = self.env.reset()
+        print(self.obs)
 
-# init the avatars for the message icons
-avatars = {"human":None, "OD":"images/wall-e.png", "TP":"images/eve.png"}
+    async def ui(self, q):
+        while True:
+            # Run the input call in a separate thread to avoid blocking the event loop
+            user_input = await asyncio.to_thread(input, "Enter something for the continuously running function: ")
+            await q.put(user_input)
 
-# init robot simulation
-if "sim" not in st.session_state:
-  # init simulator
-  st.session_state.sim = Simulation()
-  st.session_state.sim.run()
-  # init state machine state:
-  # 0 = There's no plan the OD can execute
-  # 1 = There is a plan the TP can execute. A button pops up to allow the user to execute the plan
-  # 2 = Trigger the execution of the plan
-  st.session_state.stage = 0
-  # init state machine state:
-  # 0 = You can press start to start recording frames
-  # 1 = You can press stop to save the recording or cacel the recording
-  # 2 = Saves the recording and stops saving frames
-  # 3 = cancels the recording and stops saving frames
-  st.session_state.recording = 0
+    async def step(self, q):
+        while True:
+            if not q.empty():
+                message = await q.get()
+                print("Calling OD...")
+                self.robot.next_plan(message, self.obs)
+                #print(f"Received from input function: {message}")
 
-def set_state(i):
-  # Function to update the state machine stage
-  st.session_state.stage = i
+            self.robot.init_states(self.obs, self.t)
+            action = self.robot.step()
+            self.obs, _, done, _ = self.env.step(action)
+            await asyncio.sleep(.05)
 
-def set_recording_state(i):
-  # Function to update the recording state machine stage
-  st.session_state.recording = i
+    async def run(self):
+        task1 = asyncio.create_task(self.ui(self.q))
+        task2 = asyncio.create_task(self.step(self.q))
+        await asyncio.gather(task1, task2)
 
-# Initialize chat history
-if "messages" not in st.session_state:
-  st.session_state.messages = []
 
-# Display chat messages from history on app rerun
-for message in st.session_state.messages:
-  message_type = message["type"]
-  with st.chat_message(message_type, avatar=avatars[message_type]):
-    st.markdown(message["content"])
+if __name__ == "__main__":
+    s = Simulation()
+    s.reset()
+    asyncio.run(s.run())
 
-# Accept user input
-if prompt := st.chat_input("What should the robot do?"):
-  # Add user message to chat history
-  st.session_state.messages.append({"type": "human", "content":prompt})
-  # Display user message in chat message container
-  with st.chat_message("human"):
-    st.markdown(prompt)
-
-  # Display assistant response in chat message container
-  if model == "Task Planner":
-    with st.chat_message("TP", avatar=avatars["TP"]):
-      st.session_state.sim.create_plan(prompt, solve=False) 
-      st.session_state.stage = 1
-  elif model == "Optimization Designer":
-    with st.chat_message("OD", avatar=avatars["OD"]):
-      st.session_state.sim._solve_task(prompt)
-
-if st.session_state.stage == 1:
-  st.button('Execute plan', on_click=set_state, args=[2])
-
-if st.session_state.stage == 2:
-  with st.chat_message("OD", avatar=avatars["OD"]):
-    st.session_state.sim.execute_plan()
-  st.session_state.stage = 0
-
-if st.session_state.recording == 0:
-  st.sidebar.button('Start recording', on_click=set_recording_state, args=[1])
-
-if st.session_state.recording == 1:
-  st.session_state.sim.save_video = True
-  st.sidebar.button('Stop recording', on_click=set_recording_state, args=[2])
-  st.sidebar.button('Cancel recording', on_click=set_recording_state, args=[3])
-
-if st.session_state.recording == 2:
-  st.session_state.sim.save_video = False
-  st.session_state.sim._save_video()
-  set_recording_state(0)
-
-if st.session_state.recording == 3:
-  st.session_state.sim.save_video = False
-  st.session_state.sim.frames_list = []
-  set_recording_state(0)
+    """sleep(10)
+    print("Calling LLM...")
+    s.robot.next_plan("move gripper 0.1m above cube_1", s.obs)"""
