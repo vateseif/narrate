@@ -28,7 +28,7 @@ class BaseController(AbstractController):
     self.init_expressions()
 
     # gripper fingers offset for constraints 
-    self.gripper_offsets = [np.array([0., -0.048, 0.]), np.array([0., 0.048, 0.]), np.array([0., 0., 0.048])]
+    self.gripper_offsets = [np.array([0., -0.045, 0.]), np.array([0., 0.045, 0.]), np.array([0., 0., 0.048])]
 
 
   def init_model(self):
@@ -41,7 +41,11 @@ class BaseController(AbstractController):
     # position of objects
     self.objects = {} 
     for o in self.objects_info:
-      self.objects[o['name']] = self.model.set_variable(var_type='_p', var_name=o['name'], shape=(3,1))
+      if not o['name'].endswith("_orientation"):
+        self.objects[o['name']] = self.model.set_variable(var_type='_p', var_name=o['name'], shape=(3,1))
+      else:
+        name = o['name'].replace("_orientation", "_psi")
+        self.objects[name] = self.model.set_variable(var_type='_p', var_name=name)
 
     # home position [x y, z]
     self.x0 = {}
@@ -84,7 +88,7 @@ class BaseController(AbstractController):
     for i, r in enumerate(self.robots_info):
       #regularization += ca.norm_2(self.x[i] - r['x0'])**2
       regularization += .4 * ca.norm_2(self.dx[i])**2
-      regularization += .4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
+      regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
     mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
     lterm = 0.4*mterm
     # state objective
@@ -146,6 +150,25 @@ class BaseController(AbstractController):
       self.R.append(np.array([[ca.cos(self.psi[i]), -ca.sin(self.psi[i]), 0],
                               [ca.sin(self.psi[i]), ca.cos(self.psi[i]), 0],
                               [0, 0, 1.]]))
+      
+  def _quaternion_to_euler_angle_vectorized2(self, quaternion):
+      x, y, z, w = quaternion
+      ysqr = y * y
+
+      t0 = +2.0 * (w * x + y * z)
+      t1 = +1.0 - 2.0 * (x * x + ysqr)
+      X = np.arctan2(t0, t1)
+
+      t2 = +2.0 * (w * y - z * x)
+
+      t2 = np.clip(t2, a_min=-1.0, a_max=1.0)
+      Y = np.arcsin(t2)
+
+      t3 = +2.0 * (w * z + x * y)
+      t4 = +1.0 - 2.0 * (ysqr + z * z)
+      Z = np.arctan2(t3, t4)
+
+      return np.array([X, Y, Z])
 
   def set_t(self, t:float):
     """ Update the simulation time of the MPC controller"""
@@ -170,7 +193,9 @@ class BaseController(AbstractController):
     self.set_x0(observation)
     # set variable parameters
     parameters = {'t': [t]}
-    parameters = parameters | {o['name']: [observation[o['name']]] for o in self.objects_info}
+    parameters = parameters | {o['name']: [observation[o['name']]] for o in self.objects_info if not o["name"].endswith("_orientation")}
+    parameters = parameters | {o['name'].replace("_orientation", "_psi"): [self._quaternion_to_euler_angle_vectorized2(observation[o['name']])[-1]] for o in self.objects_info if o["name"].endswith("_orientation")}
+    #print(parameters)
     self.mpc.set_uncertainty_values(**parameters)
 
   def reset(self, observation: Dict[str, np.ndarray], t:float = 0) -> None:
@@ -192,6 +217,7 @@ class BaseController(AbstractController):
     for i, r in enumerate(self.robots_info):
       robots_states[f'x{r["name"]}'] = self.x[i] + self.R[i]@offset
       robots_states[f'dx{r["name"]}'] = self.dx[i]
+      robots_states[f'psi{r["name"]}'] = self.psi[i]
     
     eval_variables = self.eval_variables | robots_states | self.objects | x0
     # evaluate code

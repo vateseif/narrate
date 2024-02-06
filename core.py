@@ -106,7 +106,7 @@ class AbstractSimulation(ObjBase):
   def __init__(self, cfg: AbstractSimulaitonConfig) -> None:
     self.cfg = cfg
     # init env
-    self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
+    self.env = gym.make(f"PandaCubes-v2", render=True)#gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
     # init robots
     self.robot: AbstractRobot # TODO: account for multiple robots
     # count number of tasks solved from a plan 
