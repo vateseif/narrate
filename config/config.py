@@ -56,7 +56,7 @@ class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   avatar: str = "OD"
   parsing: str = "optimization"
   model_name: str = "gpt-4"
-  streaming: bool = True
+  streaming: bool = False
   temperature: float = 0.6
 
 class BaseControllerConfig(AbstractControllerConfig):
