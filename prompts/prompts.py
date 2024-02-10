@@ -233,7 +233,7 @@ This is the scene description:
   - The variable `t` represents the simulation time.
   - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
   - The orientations around the z-axis of each cube are defined by variables `cube_1_psi` `cube_2_psi` `cube_3_psi` `cube_4_psi`.
-  - All cubes have side length of 0.04685m.
+  - All cubes have side length of 0.05m.
 
 Rules:
   - You MUST write every equality constraints such that it is satisfied if it is = 0:
