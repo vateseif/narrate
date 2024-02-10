@@ -39,28 +39,28 @@ class BaseRobot(AbstractRobot):
     plan = self.TP.run(user_task)
     return plan # TODO: plan.tasks is hardcoded here
 
-  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]) -> float:
+  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]) -> str:
     """ Returns the sleep time to be applied"""
     # print plan
     #print(f"\033[91m Task: {plan} \033[0m ")
     # if custom function is called apply that
     if "open" in plan.lower() and "gripper" in plan.lower():
       self.open_gripper()
-      simulate_stream("OD", "\n```\n open_gripper()\n```\n")
-      return 1.
+      #simulate_stream("OD", "\n```\n open_gripper()\n```\n")
+      return "\n```\n open_gripper()\n```\n"
     elif "close" in plan.lower() and "gripper" in plan.lower():
       self.close_gripper()
-      simulate_stream("OD", "\n```\n close_gripper()\n```\n")
-      return 1.
+      #simulate_stream("OD", "\n```\n close_gripper()\n```\n")
+      return "\n```\n close_gripper()\n```\n"
     # catch if reply cannot be parsed. i.e. when askin the LLM a question
     try:
       # design optimization functions
       optimization = self.OD.run(plan)
       # apply optimization functions to MPC
       self.MPC.apply_gpt_message(optimization, observation)
-      return self.cfg.wait_s
+      return optimization.pretty_print()
     except:
-      return 1.
+      return "ERROR"
 
   def step(self):
     action = []
