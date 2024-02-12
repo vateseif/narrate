@@ -3,7 +3,6 @@ import sys
 import cv2
 import gym
 import panda_gym
-import threading
 import numpy as np
 from time import sleep
 from typing import Optional
