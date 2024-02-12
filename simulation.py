@@ -130,6 +130,20 @@ class Simulation(AbstractSimulation):
         solve = data.get('solve', False)
         AI_response = self.create_plan(user_task, solve)
         return web.json_response({"avatar": "TP", "response": AI_response})
+    
+    async def http_save_recording_handler(self, request):
+        self.save_video = False
+        self._save_video()
+        return web.json_response({"response": "Recording saved"})
+    
+    async def http_start_recording_handler(self, request):      
+        self.save_video = True
+        return web.json_response({"response": "Recording started"})
+    
+    async def http_cancel_recording_handler(self, request):
+        self.save_video = False
+        self.frames_list = []
+        return web.json_response({"response": "Recording cancelled"})
 
     async def main(self, app):
         runner = web.AppRunner(app)
@@ -152,12 +166,15 @@ class Simulation(AbstractSimulation):
         app = web.Application()
         app.add_routes([
             web.post('/create_plan', self.http_plan_handler),
-            web.post('/solve_task', self.http_solve_task_handler)
-            ])
+            web.post('/solve_task', self.http_solve_task_handler),
+            web.get('/save_recording', self.http_save_recording_handler),
+            web.get('/start_recording', self.http_start_recording_handler),
+            web.get('/cancel_recording', self.http_cancel_recording_handler)
+        ])
 
         asyncio.run(self.main(app))
   
 
 if __name__=="__main__":
-  s = Simulation()
-  s.run()
+    s = Simulation()
+    s.run()
