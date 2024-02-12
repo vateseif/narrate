@@ -10,6 +10,7 @@ from typing import Optional
 from datetime import datetime
 import asyncio
 from aiohttp import web
+from tqdm import tqdm
 
 from robot import BaseRobot
 from core import AbstractSimulation, BASE_DIR
@@ -22,7 +23,7 @@ class Simulation(AbstractSimulation):
 
         self.cfg = cfg
         # init env
-        self.env = gym.make(f"PandaCubes-v2", render=True)#gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
+        self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
         # init robots
         # count number of tasks solved from a plan 
         self.task_counter = 0
@@ -56,13 +57,9 @@ class Simulation(AbstractSimulation):
         # init list of RGB frames if wanna save video
         self.frames_list = []
 
-    def create_plan(self, user_task:str, solve:bool=False): 
-        sleep(1)
+    def create_plan(self, user_task:str) -> str: 
         self.task_counter = 0
         self.plan = self.robot.create_plan(user_task)
-        if solve:
-            self.execute_plan()
-
         return self.plan.pretty_print()
 
     def execute_plan(self):
@@ -80,7 +77,7 @@ class Simulation(AbstractSimulation):
         self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video
         if self.save_video:
-            frame = self.env.render("rgb_array")
+            frame = np.array(self.env.render("rgb_array")).reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
             self.frames_list.append(frame)
 
         return done
@@ -100,11 +97,10 @@ class Simulation(AbstractSimulation):
     def _save_video(self):
         # Define the parameters
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        width, height = 1920, 1920  # Adjust as needed
         # Create a VideoWriter object
-        out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (width, height))
+        out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (self.cfg.width, self.cfg.height))
         # Write frames to the video
-        for frame in self.frames_list:
+        for frame in tqdm(self.frames_list):
             # Ensure the frame is in the correct format (RGBA)
             if frame.shape[2] == 3:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2RGBA)
@@ -127,8 +123,7 @@ class Simulation(AbstractSimulation):
     async def http_plan_handler(self, request):
         data = await request.json()
         user_task = data.get('task')
-        solve = data.get('solve', False)
-        AI_response = self.create_plan(user_task, solve)
+        AI_response = self.create_plan(user_task)
         return web.json_response({"avatar": "TP", "response": AI_response})
     
     async def http_save_recording_handler(self, request):
@@ -144,6 +139,12 @@ class Simulation(AbstractSimulation):
         self.save_video = False
         self.frames_list = []
         return web.json_response({"response": "Recording cancelled"})
+    
+    async def http_execute_next_task_handler(self, request):
+        next_task : str = self.plan.tasks[self.task_counter]
+        self.task_counter += 1
+        AI_response = self._solve_task(next_task)
+        return web.json_response({"avatar": "OD", "response": AI_response})
 
     async def main(self, app):
         runner = web.AppRunner(app)
@@ -169,7 +170,8 @@ class Simulation(AbstractSimulation):
             web.post('/solve_task', self.http_solve_task_handler),
             web.get('/save_recording', self.http_save_recording_handler),
             web.get('/start_recording', self.http_start_recording_handler),
-            web.get('/cancel_recording', self.http_cancel_recording_handler)
+            web.get('/cancel_recording', self.http_cancel_recording_handler),
+            web.get('/execute_next_task', self.http_execute_next_task_handler)
         ])
 
         asyncio.run(self.main(app))

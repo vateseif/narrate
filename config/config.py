@@ -9,6 +9,8 @@ class SimulationConfig(AbstractSimulaitonConfig):
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
+  width: int = 1024
+  height: int = 1024
 
 
 class ObjectivePlanLLMConfig(AbstractLLMConfig):

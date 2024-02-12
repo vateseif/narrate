@@ -29,6 +29,8 @@ if "stage" not in st.session_state:
 	# 2 = Saves the recording and stops saving frames
 	# 3 = cancels the recording and stops saving frames
 	st.session_state.recording = 0
+	# init number of tasks solved from a plan
+	st.session_state.task_counter = 1
 
 def set_state(i):
 	# Function to update the state machine stage
@@ -63,6 +65,7 @@ if prompt := st.chat_input("What should the robot do?"):
 			response = requests.post(base_url+'create_plan', json={"task": prompt}).json()["response"]
 			st.session_state.messages.append({"type": "TP", "content": response})
 			st.markdown(response)
+			st.session_state.stage = 1
 			set_state(1)
 	elif model == "Optimization Designer":
 		with st.chat_message("OD", avatar=avatars["OD"]):
@@ -72,12 +75,16 @@ if prompt := st.chat_input("What should the robot do?"):
 			st.markdown(response)
 
 if st.session_state.stage == 1:
-	st.button('Execute plan', on_click=set_state, args=[2])
+	st.button(f'Execute task {st.session_state.task_counter}', on_click=set_state, args=[2])
 
 if st.session_state.stage == 2:
 	with st.chat_message("OD", avatar=avatars["OD"]):
-		st.session_state.sim.execute_plan()
-	st.session_state.stage = 0
+		response = requests.get(base_url+'execute_next_task').json()["response"]
+		st.session_state.messages.append({"type": "OD", "content": response})
+		st.markdown(response)
+		st.session_state.task_counter += 1
+	set_state(1)
+	st.rerun()
 
 if st.session_state.recording == 0:
 	st.sidebar.button('Start recording', on_click=set_recording_state, args=[1])
