@@ -28,7 +28,7 @@ class BaseController(AbstractController):
     self.init_expressions()
 
     # gripper fingers offset for constraints 
-    self.gripper_offsets = [np.array([0., -0.045, 0.]), np.array([0., 0.045, 0.]), np.array([0., 0., 0.048])]
+    self.gripper_offsets = [np.array([0., -0.05, 0.]), np.array([0., 0.05, 0.]), np.array([0., 0., 0.05])]
 
 
   def init_model(self):
