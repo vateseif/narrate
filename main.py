@@ -30,7 +30,7 @@ if "stage" not in st.session_state:
 	# 3 = cancels the recording and stops saving frames
 	st.session_state.recording = 0
 	# init number of tasks solved from a plan
-	st.session_state.task_counter = 1
+	st.session_state.task = None
 
 def set_state(i):
 	# Function to update the state machine stage
@@ -62,28 +62,29 @@ if prompt := st.chat_input("What should the robot do?"):
 	if model == "Task Planner":
 		with st.chat_message("TP", avatar=avatars["TP"]):
 			#st.session_state.sim.create_plan(prompt, solve=False)
-			response = requests.post(base_url+'plan_task', json={"task": prompt}).json()["response"]
+			response = requests.post(base_url+'plan_task', json={"content": prompt}).json()["content"]
 			st.session_state.messages.append({"type": "TP", "content": response})
 			st.markdown(response)
-			st.session_state.stage = 1
+			st.session_state.task = response
 			set_state(1)
 	elif model == "Optimization Designer":
 		with st.chat_message("OD", avatar=avatars["OD"]):
 			#st.session_state.sim._solve_task(prompt)
-			response = requests.post(base_url+'solve_task', json={"task": prompt}).json()["response"]
+			response = requests.post(base_url+'solve_task', json={"content": prompt}).json()["content"]
 			st.session_state.messages.append({"type": "OD", "content": response})
 			st.markdown(response)
 
 if st.session_state.stage == 1:
-	st.button(f'Execute task {st.session_state.task_counter}', on_click=set_state, args=[2])
+	st.button(f'Solve task', on_click=set_state, args=[2])
 
 if st.session_state.stage == 2:
 	with st.chat_message("OD", avatar=avatars["OD"]):
-		response = requests.get(base_url+'execute_next_task').json()["response"]
+		task = st.session_state.task
+		response = requests.post(base_url+'solve_task', json={"content": task}).json()["content"]
 		st.session_state.messages.append({"type": "OD", "content": response})
 		st.markdown(response)
-		st.session_state.task_counter += 1
-	set_state(1)
+		st.session_state.task = None
+	set_state(0)
 	st.rerun()
 
 if st.session_state.recording == 0:
