@@ -76,7 +76,8 @@ class Simulation(AbstractSimulation):
         self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video
         if self.save_video:
-            frame = np.array(self.env.render("rgb_array")).reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
+            frame = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
+            frame = frame.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
             self.frames_list.append(frame)
 
         return done
