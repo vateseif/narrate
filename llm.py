@@ -57,7 +57,7 @@ class Message:
   def to_dict(self):
     message = [{"type": "text", "text": self.text}]
     if self.base64_image:
-      message.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.base64_image}"}})
+      message.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.base64_image}", "detail": "high"}})
     return {"role": self.role, "content": message}
 
 class StreamHandler(BaseCallbackHandler):
@@ -162,14 +162,15 @@ class BaseVLM(AbstractLLM):
     # send request to OpenAI API
     payload = {
       "model": self.cfg.model_name,
-      "messages": [m.to_dict() for m in self.messages]
+      "messages": [m.to_dict() for m in self.messages],
+      "max_tokens": 150
     }
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=self.headers, json=payload).json()
-    print(f"\33[92m {response} \033[0m \n")
     # retrieve text response
     try:
       AI_response = response['choices'][0]['message']['content']
       self.messages.append(Message(text=AI_response, role="assistant"))
+      print(f"\33[92m {AI_response} \033[0m \n")
     except Exception as e:
       print(f"Error: {e}")
       AI_response = response['error']['message']
