@@ -59,7 +59,8 @@ class BaseRobot(AbstractRobot):
       # apply optimization functions to MPC
       self.MPC.apply_gpt_message(optimization, observation)
       return optimization.pretty_print()
-    except:
+    except Exception as e:
+      print(f"Error: {e}")
       return "ERROR"
 
   def step(self):
