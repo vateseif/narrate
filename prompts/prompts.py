@@ -233,7 +233,7 @@ This is the scene description:
   - The variable `t` represents the simulation time.
   - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
   - The orientations around the z-axis of each cube are defined by variables `cube_1_psi` `cube_2_psi` `cube_3_psi` `cube_4_psi`.
-  - All cubes have side length of 0.05m.
+  - All cubes have side length of 0.06m.
 
 Rules:
   - You MUST write every equality constraints such that it is satisfied if it is = 0:
@@ -243,6 +243,7 @@ Rules:
   - You MUST provide the constraints as a list of strings.
   - The objective and constraints can be a function of `x`, `cube_1`, `cube_1_psi`, ... and/or `t`. 
   - Use `t` in the inequalities especially when you need to describe motions of the gripper.
+  - If you want to avoid colliding with a cube, the right safety margin is half of its side length.
     
 
 Example 1:
