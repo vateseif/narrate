@@ -230,7 +230,6 @@ class BaseController(AbstractController):
     eval_variables = self.eval_variables | robots_states | self.objects | x0
     # evaluate code
     evaluated_code = eval(code_str, eval_variables) + collision_radius
-    print(f"Evaluated code: {evaluated_code}")
     return evaluated_code
 
   def _solve(self) -> List[np.ndarray]:
@@ -287,6 +286,8 @@ class OptimizationController(BaseController):
     # NOTE use 1e-6 when doing task L 
     regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
     self.set_objective(self._eval(optimization.objective, observation) + regularization)
+    # init variables and expressions
+    self.init_expressions()
     # set base constraint functions
     constraints = []
     # positive equality constraint
