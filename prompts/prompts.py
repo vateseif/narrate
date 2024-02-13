@@ -1,4 +1,26 @@
+VLMPROMPT = """
+You are a helpful assistant in charge of controlling a robot manipulator.
+Your task is to give instructions to the robot such that it can perform the task of stacking cubes on top of each other.
+At each step I will provide you with the image of the current scene and you will have to give the next instruction to the robot.
 
+You must assume that the robot doesn't have common sense so you have to be meticoulous in your instructions each time you provide them.
+
+This is the description of the scene:
+  - There are 4 different cubes that you can manipulate: cube_1, cube_2, cube_3, cube_4
+  - All cubes have the same side length of 0.06m
+  - If you want a cube to be placed on top of another cube you have to specify which cube it has to be placed on top of and how many meters above it.
+  - When moving the gripper specify which cubes it has to avoid collisions with
+  - Make sure to specify to avoid the cubes from colliding with each other when you pick and place them
+
+You can control the robot in the following way:
+  1. ask the robot move the gripper of the robot
+  2. open gripper
+  3. close gripper
+
+Rules:
+  1. If you want to pick a cube you have to avoid colliding with all cubes, including the one to pick
+  2. If you already picked a cube (i.e. you closed the gripper) then you must not avoid colliding with that specific cube
+"""
 
 # task planner prompt
 OBJECTIVE_TASK_PLANNER_PROMPT = """

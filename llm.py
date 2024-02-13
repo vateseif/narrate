@@ -2,7 +2,10 @@ from time import sleep
 from typing import List, Optional
 from core import AbstractLLM, AbstractLLMConfig
 from mocks.mocks import nmpcMockOptions
+from prompts.prompts import VLMPROMPT
 
+import os
+import requests
 import tiktoken
 from streamlit import empty, session_state
 from pydantic import BaseModel, Field
@@ -44,6 +47,18 @@ class Optimization(BaseModel):
     for c in cls.inequality_constraints:
       pretty_msg += f"\t {c} <= 0\n"
     return pretty_msg+"\n```\n"
+  
+class Message:
+  def __init__(self, text, base64_image=None, role="user"):
+    self.role = role
+    self.text = text
+    self.base64_image = base64_image
+
+  def to_dict(self):
+    message = [{"type": "text", "text": self.text}]
+    if self.base64_image:
+      message.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.base64_image}"}})
+    return {"role": self.role, "content": message}
 
 class StreamHandler(BaseCallbackHandler):
 
@@ -124,3 +139,43 @@ class BaseLLM(AbstractLLM):
     self.messages.append(model_message)
     print(f"\33[92m {model_message.content} \033[0m \n")
     return self.parser.parse(model_message.content)
+  
+
+class BaseVLM(AbstractLLM):
+
+  def __init__(self, cfg: AbstractLLMConfig) -> None:
+    super().__init__(cfg)
+
+    # init messages
+    self.messages = []
+    # load prompt
+    self.messages.append(Message(text=VLMPROMPT, role="system"))
+    # request headers
+    self.headers = {
+      "Content-Type": "application/json",
+      "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
+    }
+
+  def run(self, user_message:str, base64_image) -> str:
+    # add user message to chat history
+    self.messages.append(Message(text=user_message, role="user", base64_image=base64_image))
+    # send request to OpenAI API
+    payload = {
+      "model": self.cfg.model_name,
+      "messages": [m.to_dict() for m in self.messages]
+    }
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=self.headers, json=payload).json()
+    print(f"\33[92m {response} \033[0m \n")
+    # retrieve text response
+    try:
+      AI_response = response['choices'][0]['message']['content']
+      self.messages.append(Message(text=AI_response, role="assistant"))
+    except Exception as e:
+      print(f"Error: {e}")
+      AI_response = response['error']['message']
+
+    return AI_response
+
+
+  
+

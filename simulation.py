@@ -2,6 +2,7 @@ import os
 import sys
 import cv2
 import gym
+import base64
 import panda_gym
 import numpy as np
 from time import sleep
@@ -126,6 +127,20 @@ class Simulation(AbstractSimulation):
         AI_response = self.create_plan(user_task)
         return web.json_response({"avatar": "TP", "response": AI_response})
     
+    async def http_plan_task_handler(self, request):
+        data = await request.json()
+        user_message = data.get('task')
+        # retrieve current frame
+        frame = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
+        frame = frame.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB)
+        # convert to base64
+        _, buffer = cv2.imencode('.jpg', frame)
+        frame = base64.b64encode(buffer).decode('utf-8')
+        # run VLM
+        task:str = self.robot.VLM.run(user_message, frame)
+        return web.json_response({"avatar": "TP", "response": task})
+    
     async def http_save_recording_handler(self, request):
         self.save_video = False
         self._save_video()
@@ -167,6 +182,7 @@ class Simulation(AbstractSimulation):
         app = web.Application()
         app.add_routes([
             web.post('/create_plan', self.http_plan_handler),
+            web.post('/plan_task', self.http_plan_task_handler),
             web.post('/solve_task', self.http_solve_task_handler),
             web.get('/save_recording', self.http_save_recording_handler),
             web.get('/start_recording', self.http_start_recording_handler),

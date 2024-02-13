@@ -1,8 +1,8 @@
 import numpy as np
 from typing import Tuple, List, Dict
-from llm import BaseLLM, simulate_stream
+from llm import BaseLLM, BaseVLM
 from core import AbstractRobot
-from config.config import BaseRobotConfig, BaseLLMConfigs
+from config.config import BaseRobotConfig, BaseLLMConfigs, VLMConfig
 from controller import ControllerOptions
 
 
@@ -16,6 +16,7 @@ class BaseRobot(AbstractRobot):
     self.gripper_timer = 0
     self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type](self.cfg.task))
     self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type](self.cfg.task))
+    self.VLM = BaseVLM(VLMConfig(self.cfg.task))
     self.MPC = ControllerOptions[self.cfg.controller_type](env_info)
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):

@@ -30,6 +30,14 @@ class OptimizationPlanLLMConfig(AbstractLLMConfig):
   streaming: bool = False
   temperature: float = 0.7
 
+class VLMConfig(AbstractLLMConfig):
+  def __init__(self, task:str=None) -> None:
+    self.mock_task = None # TODO wtf this is shit
+    self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
+  model_name: str = "gpt-4-vision-preview"
+  streaming: bool = False
+  temperature: float = 0.6
+
 class ObjectiveLLMConfig(AbstractLLMConfig):
   prompt: str = OBJECTIVE_DESIGNER_PROMPT
   parsing: str = "objective"
@@ -60,6 +68,8 @@ class NMPCOptimizationLLMConfig(AbstractLLMConfig):
   model_name: str = "gpt-4"
   streaming: bool = False
   temperature: float = 0.6
+
+
 
 class BaseControllerConfig(AbstractControllerConfig):
   nx: int = 3

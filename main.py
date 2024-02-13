@@ -62,7 +62,7 @@ if prompt := st.chat_input("What should the robot do?"):
 	if model == "Task Planner":
 		with st.chat_message("TP", avatar=avatars["TP"]):
 			#st.session_state.sim.create_plan(prompt, solve=False)
-			response = requests.post(base_url+'create_plan', json={"task": prompt}).json()["response"]
+			response = requests.post(base_url+'plan_task', json={"task": prompt}).json()["response"]
 			st.session_state.messages.append({"type": "TP", "content": response})
 			st.markdown(response)
 			st.session_state.stage = 1
