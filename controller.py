@@ -28,7 +28,10 @@ class BaseController(AbstractController):
     self.init_expressions()
 
     # gripper fingers offset for constraints 
-    self.gripper_offsets = [np.array([0., -0.05, 0.]), np.array([0., 0.05, 0.]), np.array([0., 0., 0.05])]
+    self.gripper_offsets = [(np.array([0., -0.048, 0.003]), 0.0135), (np.array([0., 0.048, 0.003]), 0.0135), 
+                            (np.array([0., 0.0, 0.055]), 0.025), (np.array([0., -0.045, 0.055]), 0.025),
+                            (np.array([0., 0.045, 0.055]), 0.025), (np.array([0., -0.09, 0.055]), 0.025), (np.array([0., 0.09, 0.055]), 0.025)
+                            ]
 
 
   def init_model(self):
@@ -62,9 +65,7 @@ class BaseController(AbstractController):
     self.dpsi = []    # gripper rotational speed
     self.u = []       # gripper control (=velocity)
     self.u_psi = []   # gripper rotation control (=rotational velocity)
-    
-    
-
+    self.cost = 0.    # cost function
     for i, r in enumerate(self.robots_info):
       # position (x, y, z)
       self.x.append(self.model.set_variable(var_type='_x', var_name=f'x{r["name"]}', shape=(self.cfg.nx,1)))
@@ -78,15 +79,16 @@ class BaseController(AbstractController):
       self.model.set_rhs(f'psi{r["name"]}', self.psi[i] + self.dpsi[i] * self.cfg.dt)
       self.model.set_rhs(f'dx{r["name"]}', self.u[i])
       self.model.set_rhs(f'dpsi{r["name"]}', self.u_psi[i])
-    
-    # setup model
-    self.model.setup()
+
+  def set_cost_expression(self, cost: ca.SX = ca.SX(0)):
+    # cost function
+    self.model.set_expression('cost', cost)
   
-  def set_objective(self, mterm: ca.SX = ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
+  def set_objective(self, mterm: ca.SX=ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
     # objective terms
     regularization = 0
     for i, r in enumerate(self.robots_info):
-      #regularization += ca.norm_2(self.x[i] - r['x0'])**2
+      #regularization += ca.norm_2(self.x[i] - (np.array([0,0,0.2])))**2
       regularization += .4 * ca.norm_2(self.dx[i])**2
       regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
     mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
@@ -129,6 +131,10 @@ class BaseController(AbstractController):
     self.mpc.settings.supress_ipopt_output() # => verbose = False
 
   def init_controller(self):
+    # init cost function
+    self.set_cost_expression()
+    # setup model
+    self.model.setup()
     # init
     self.init_mpc()
     # set functions
@@ -206,22 +212,25 @@ class BaseController(AbstractController):
     self.init_states(observation, t)
     return
 
-  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=np.zeros(3)):
+  def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=(np.zeros(3), 0.)):
     #TODO the offset is still harcoded
     # put together variables for python code evaluation:    
     
+    # parse offset
+    collision_xyz, collision_radius = offset
     # initial state of robots before applying any action
     x0 = {f'x0{r["name"]}': observation[f'robot{r["name"]}'][:3] for r in self.robots_info} 
     # robot variable states (decision variables in the optimization problem)
     robots_states = {}
     for i, r in enumerate(self.robots_info):
-      robots_states[f'x{r["name"]}'] = self.x[i] + self.R[i]@offset
+      robots_states[f'x{r["name"]}'] = self.x[i] + self.R[i]@collision_xyz
       robots_states[f'dx{r["name"]}'] = self.dx[i]
       robots_states[f'psi{r["name"]}'] = self.psi[i]
     
     eval_variables = self.eval_variables | robots_states | self.objects | x0
     # evaluate code
-    evaluated_code = eval(code_str, eval_variables)
+    evaluated_code = eval(code_str, eval_variables) + collision_radius
+    print(f"Evaluated code: {evaluated_code}")
     return evaluated_code
 
   def _solve(self) -> List[np.ndarray]:
@@ -237,7 +246,9 @@ class BaseController(AbstractController):
       gamma_rotation = [-self.pose[i][4] * 1.5]  # P control for angle around y axis # TODO: 1. is a hardcoded gain
       psi_rotation = [u0[4*i+3]]            # rotation control
       action.append(np.concatenate((ee_displacement, theta_rotation, gamma_rotation, psi_rotation)))
-    
+
+    self.cost = self.mpc.data['_aux'][-1][-1]
+
     return action
 
   def step(self):
@@ -263,12 +274,19 @@ class ObjectiveController(BaseController):
 class OptimizationController(BaseController):
 
   def apply_gpt_message(self, optimization: Optimization, observation: Dict[str, np.ndarray]) -> None:
+    # init model newly
+    self.init_model()
+    # init states
+    # set cost function
+    self.set_cost_expression(self._eval(optimization.objective, observation))
+    # setup model
+    self.model.setup()
     # init mpc newly
     self.init_mpc()
     # apply constraint function
     # NOTE use 1e-6 when doing task L 
-    regulatization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
-    self.set_objective(self._eval(optimization.objective, observation) + regulatization)
+    regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
+    self.set_objective(self._eval(optimization.objective, observation) + regularization)
     # set base constraint functions
     constraints = []
     # positive equality constraint
