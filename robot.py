@@ -1,56 +1,46 @@
 import numpy as np
-from typing import Tuple, List, Dict
-from llm import BaseLLM, BaseVLM
+from llm import LLM, VLM
 from core import AbstractRobot
-from config.config import BaseRobotConfig, BaseLLMConfigs, VLMConfig
-from controller import ControllerOptions
+from controller import Controller
+from typing import Tuple, List, Dict
+from config.config import RobotConfig, TPConfig, ODConfig
 
 
-
-class BaseRobot(AbstractRobot):
-
-  def __init__(self, env_info:Tuple[List], cfg=BaseRobotConfig()) -> None:
+class Robot(AbstractRobot):
+  def __init__(self, env_info:Tuple[List], cfg=RobotConfig()) -> None:
     self.cfg = cfg
 
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
-    self.TP = BaseLLM(BaseLLMConfigs[self.cfg.tp_type](self.cfg.task))
-    self.OD = BaseLLM(BaseLLMConfigs[self.cfg.od_type](self.cfg.task))
-    self.VLM = BaseVLM(VLMConfig(self.cfg.task))
-    self.MPC = ControllerOptions[self.cfg.controller_type](env_info)
+    self.TP = VLM(TPConfig(self.cfg.task))
+    self.OD = LLM(ODConfig(self.cfg.task))
+    
+    self.MPC = Controller(env_info)
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
       """ Update simulation time and current state of MPC controller"""
       self.MPC.init_states(observation, t)
 
-  def open_gripper(self):
+  def _open_gripper(self):
     self.gripper = 0.
     self.gripper_timer = 0
 
-  def close_gripper(self):
+  def _close_gripper(self):
     self.gripper = -1.
 
-  def set_t(self, t:float):
-    self.MPC.set_t(t)
+  def plan_task(self, user_message:str, base64_image) -> str:
+    """ Runs the Task Planner by passing the user message and the current frame """
+    return self.TP.run(user_message, base64_image)
 
-  def set_x0(self, observation: Dict[str, np.ndarray]):
-    self.MPC.set_x0(observation)
-
-  def create_plan(self, user_task:str):
-    plan = self.TP.run(user_task)
-    return plan # TODO: plan.tasks is hardcoded here
-
-  def next_plan(self, plan:str, observation: Dict[str, np.ndarray]) -> str:
-    """ Returns the sleep time to be applied"""
-    # print plan
-    #print(f"\033[91m Task: {plan} \033[0m ")
+  def solve_task(self, plan:str) -> str:
+    """ Applies and returns the optimization designed by the Optimization Designer """
     # if custom function is called apply that
     if "open" in plan.lower() and "gripper" in plan.lower():
-      self.open_gripper()
+      self._open_gripper()
       #simulate_stream("OD", "\n```\n open_gripper()\n```\n")
       return "\n```\n open_gripper()\n```\n"
     elif "close" in plan.lower() and "gripper" in plan.lower():
-      self.close_gripper()
+      self._close_gripper()
       #simulate_stream("OD", "\n```\n close_gripper()\n```\n")
       return "\n```\n close_gripper()\n```\n"
     # catch if reply cannot be parsed. i.e. when askin the LLM a question
@@ -58,7 +48,7 @@ class BaseRobot(AbstractRobot):
       # design optimization functions
       optimization = self.OD.run(plan)
       # apply optimization functions to MPC
-      self.MPC.apply_gpt_message(optimization, observation)
+      self.MPC.setup_controller(optimization)
       return optimization.pretty_print()
     except Exception as e:
       print(f"Error: {e}")

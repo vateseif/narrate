@@ -5,16 +5,14 @@ import gym
 import base64
 import panda_gym
 import numpy as np
-from time import sleep
-from typing import Optional
 from datetime import datetime
 import asyncio
 from aiohttp import web
 from tqdm import tqdm
 
-from robot import BaseRobot
+from robot import Robot
 from core import AbstractSimulation, BASE_DIR
-from config.config import SimulationConfig, BaseRobotConfig
+from config.config import SimulationConfig, RobotConfig
 
 
 class Simulation(AbstractSimulation):
@@ -31,7 +29,7 @@ class Simulation(AbstractSimulation):
         # simulation time
         self.t = 0.
         env_info = (self.env.robots_info, self.env.objects_info)
-        self.robot = BaseRobot(env_info,BaseRobotConfig(self.cfg.task))
+        self.robot = Robot(env_info,RobotConfig(self.cfg.task))
         # count number of tasks solved from a plan 
         self.task_counter = 0
         # bool for stopping simulation
@@ -52,11 +50,11 @@ class Simulation(AbstractSimulation):
         _, buffer = cv2.imencode('.jpg', frame)
         frame = base64.b64encode(buffer).decode('utf-8')
         # run VLM
-        task:str = self.robot.VLM.run(user_message, frame)
+        task:str = self.robot.plan_task(user_message, frame)
         return task
     
-    def _solve_task(self, plan:str):
-        AI_response = self.robot.next_plan(plan, self.observation)
+    def _solve_task(self, task:str):
+        AI_response = self.robot.solve_task(task)
         return AI_response
 
     def reset(self):

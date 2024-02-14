@@ -6,39 +6,31 @@ from itertools import chain
 from typing import Dict, List, Optional, Tuple
 
 
+from llm import Optimization
 from core import AbstractController
-from llm import Objective, Optimization
-from config.config import BaseNMPCConfig
+from config.config import ControllerConfig
 
-class BaseController(AbstractController):
+class Controller(AbstractController):
 
-	def __init__(self, env_info:Tuple[List], cfg=BaseNMPCConfig) -> None:
+	def __init__(self, env_info:Tuple[List], cfg=ControllerConfig) -> None:
 		super().__init__(cfg)
 
 		# init info of robots and objects
 		self.robots_info, self.objects_info = env_info
 
-		# init model dynamics
-		self.init_model()
-
 		# init controller
-		self.init_controller()
-
-		# init variables and expressions
-		self.init_expressions()
+		self.setup_controller()
 
 		# gripper fingers offset for constraints 
 		self.gripper_offsets = [(np.array([0., -0.048, 0.003]), 0.0135), (np.array([0., 0.048, 0.003]), 0.0135), 
-														(np.array([0., 0.0, 0.055]), 0.025), (np.array([0., -0.045, 0.055]), 0.025),
-														(np.array([0., 0.045, 0.055]), 0.025), (np.array([0., -0.09, 0.055]), 0.025), (np.array([0., 0.09, 0.055]), 0.025)
-														]
-
+								(np.array([0., 0.0, 0.055]), 0.025), (np.array([0., -0.045, 0.055]), 0.025),
+								(np.array([0., 0.045, 0.055]), 0.025), (np.array([0., -0.09, 0.055]), 0.025), (np.array([0., 0.09, 0.055]), 0.025)
+								]
 
 	def init_model(self):
 		# inti do_mpc model
 		self.model = do_mpc.model.Model(self.cfg.model_type) 
 
-		""" Parameter """
 		# simulation time
 		self.t = self.model.set_variable('parameter', 't')
 		# position of objects
@@ -49,16 +41,10 @@ class BaseController(AbstractController):
 			else:
 				name = o['name'].replace("_orientation", "_psi")
 				self.objects[name] = self.model.set_variable(var_type='_p', var_name=name)
-
-		# home position [x y, z]
-		self.x0 = {}
-		#for r in self.robots_info:
-		#  self.x0[f'x0{r["name"]}'] = self.model.set_variable(var_type='_p', var_name=f'x0{r["name"]}', shape=(3,1))
 		
 		# gripper pose [x, y, z, theta, gamma, psi]       
 		self.pose = []    
 		
-		""" State and input variables """
 		self.x = []       # gripper position (x,y,z)
 		self.psi = []     # gripper psi (rotation around z axis)
 		self.dx = []      # gripper velocity (vx, vy, vz)
@@ -80,9 +66,37 @@ class BaseController(AbstractController):
 			self.model.set_rhs(f'dx{r["name"]}', self.u[i])
 			self.model.set_rhs(f'dpsi{r["name"]}', self.u_psi[i])
 
-	def set_cost_expression(self, cost: ca.SX = ca.SX(0)):
-		# cost function
-		self.model.set_expression('cost', cost)
+	def setup_controller(self, optimization=Optimization(objective=None, equality_constraints=[], inequality_constraints=[])):
+		self.init_model()
+		# init states
+		# init variables and expressions
+		self.init_expressions()
+		# init cost function
+		self.model.set_expression('cost', self._eval(optimization.objective))
+		# setup model
+		self.model.setup()
+		# init
+		self.init_mpc()
+		# set functions
+		# TODO: should the regularization be always applied?
+		regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
+		self.set_objective(self._eval(optimization.objective) + regularization)
+		# set base constraint functions
+		constraints = []
+		# positive equality constraint
+		constraints += [self._eval(c) for c in optimization.equality_constraints]
+		# negative equality constraint
+		constraints += [-self._eval(c) for c in optimization.equality_constraints]
+		# inequality constraints
+		inequality_constraints = [[*map(lambda const: self._eval(c, const), self.gripper_offsets)] for c in optimization.inequality_constraints]
+		constraints += list(chain(*inequality_constraints))
+		# set constraints
+		self.set_constraints(constraints)
+		# setup
+		self.mpc.set_uncertainty_values(t=np.array([0.])) # init time to 0
+		self.mpc.setup()
+		self.mpc.set_initial_guess()
+
 	
 	def set_objective(self, mterm: ca.SX=ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
 		# objective terms
@@ -130,21 +144,6 @@ class BaseController(AbstractController):
 		self.mpc.set_param(**setup_mpc)
 		self.mpc.settings.supress_ipopt_output() # => verbose = False
 
-	def init_controller(self):
-		# init cost function
-		self.set_cost_expression()
-		# setup model
-		self.model.setup()
-		# init
-		self.init_mpc()
-		# set functions
-		# TODO: should the regularization be always applied?
-		self.set_objective()
-		self.set_constraints()
-		# setup
-		self.mpc.set_uncertainty_values(t=np.array([0.])) # init time to 0
-		self.mpc.setup()
-		self.mpc.set_initial_guess()
 
 	def init_expressions(self):
 		# init variables for python evaluation
@@ -154,8 +153,8 @@ class BaseController(AbstractController):
 		for i in range(len(self.robots_info)):
 			# rotation matrix
 			self.R.append(np.array([[ca.cos(self.psi[i]), -ca.sin(self.psi[i]), 0],
-															[ca.sin(self.psi[i]), ca.cos(self.psi[i]), 0],
-															[0, 0, 1.]]))
+									[ca.sin(self.psi[i]), ca.cos(self.psi[i]), 0],
+									[0, 0, 1.]]))
 			
 	def _quaternion_to_euler_angle_vectorized2(self, quaternion):
 			x, y, z, w = quaternion
@@ -176,11 +175,7 @@ class BaseController(AbstractController):
 
 			return np.array([X, Y, Z])
 
-	def set_t(self, t:float):
-		""" Update the simulation time of the MPC controller"""
-		self.mpc.set_uncertainty_values(t=np.array([t]))
-
-	def set_x0(self, observation: Dict[str, np.ndarray]):
+	def _set_x0(self, observation: Dict[str, np.ndarray]):
 		x0 = []
 		self.pose = []
 		for r in self.robots_info: # TODO set names instead of robot_0 in panda
@@ -195,8 +190,9 @@ class BaseController(AbstractController):
 
 	def init_states(self, observation:Dict[str, np.ndarray], t:float):
 		""" Set the values the MPC initial states and variables """
+		self.observation = observation
 		# set mpc x0
-		self.set_x0(observation)
+		self._set_x0(observation)
 		# set variable parameters
 		parameters = {'t': [t]}
 		parameters = parameters | {o['name']: [observation[o['name']]] for o in self.objects_info if not o["name"].endswith("_orientation")}
@@ -212,14 +208,15 @@ class BaseController(AbstractController):
 		self.init_states(observation, t)
 		return
 
-	def _eval(self, code_str: str, observation: Dict[str, np.ndarray], offset=(np.zeros(3), 0.)):
+	def _eval(self, code_str: str, offset=(np.zeros(3), 0.)):
 		#TODO the offset is still harcoded
 		# put together variables for python code evaluation:    
+		if code_str == None: return ca.SX(0)
 		
 		# parse offset
 		collision_xyz, collision_radius = offset
 		# initial state of robots before applying any action
-		x0 = {f'x0{r["name"]}': observation[f'robot{r["name"]}'][:3] for r in self.robots_info} 
+		x0 = {f'x0{r["name"]}': self.observation[f'robot{r["name"]}'][:3] for r in self.robots_info} 
 		# robot variable states (decision variables in the optimization problem)
 		robots_states = {}
 		for i, r in enumerate(self.robots_info):
@@ -257,63 +254,12 @@ class BaseController(AbstractController):
 	
 	def retrieve_trajectory(self):
 		trajectory = []
-		for _x in self.mpc.opt_x_num['_x', :, 0, 0]:
-			_x = _x.toarray().flatten()
-			trajectory.append(_x[:3])
+		try:
+			for _x in self.mpc.opt_x_num['_x', :, 0, 0]:
+				_x = _x.toarray().flatten()
+				trajectory.append(_x[:3])
+		except:
+			pass
 
 		return trajectory
-
-
-class ObjectiveController(BaseController):
-
-	def apply_gpt_message(self, objective: Objective, observation: Dict[str, np.ndarray]) -> None:
-		# init mpc newly
-		self.init_mpc()
-		# apply constraint function
-		self.set_objective(self._eval(objective.objective, observation))
-		# set base constraint functions
-		self.set_constraints()
-		# setup
-		self.mpc.setup()
-		self.mpc.set_initial_guess()
-		return 
-
-class OptimizationController(BaseController):
-
-	def apply_gpt_message(self, optimization: Optimization, observation: Dict[str, np.ndarray]) -> None:
-		# init model newly
-		self.init_model()
-		# init variables and expressions
-		self.init_expressions()
-		# set cost function
-		self.set_cost_expression(self._eval(optimization.objective, observation))
-		# setup model
-		self.model.setup()
-		# init mpc newly
-		self.init_mpc()
-		# NOTE use 1e-6 when doing task L 
-		regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
-		self.set_objective(self._eval(optimization.objective, observation) + regularization)
-		# set base constraint functions
-		constraints = []
-		# positive equality constraint
-		constraints += [self._eval(c, observation) for c in optimization.equality_constraints]
-		# negative equality constraint
-		constraints += [-self._eval(c, observation) for c in optimization.equality_constraints]
-		# inequality constraints
-		inequality_constraints = [[*map(lambda const: self._eval(c, observation, const), self.gripper_offsets)] for c in optimization.inequality_constraints]
-		constraints += list(chain(*inequality_constraints))
-		# set constraints
-		self.set_constraints(constraints)
-		# setup
-		self.mpc.set_uncertainty_values(t=np.array([0.])) # TODO this is badly harcoded
-		self.mpc.setup()
-		self.mpc.set_initial_guess()
-		return 
-
-ControllerOptions = {
-	"objective": ObjectiveController,
-	"optimization": OptimizationController
-}
-
 

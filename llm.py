@@ -18,23 +18,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 
-class Plan(BaseModel):
-  tasks: List[str] = Field(description="list of all tasks to be carried out")
-  
-  def pretty_print(cls):
-    pretty_msg = "Tasks:\n"
-    for i, task in enumerate(cls.tasks):
-      pretty_msg += f"{i+1}. {task}\n"
-    return pretty_msg+'\n'
-
-class Objective(BaseModel):
-  objective: str = Field(description="objective function to be applied to MPC")
-
-  def pretty_print():
-    pass
-
 class Optimization(BaseModel):
-  objective: str = Field(description="objective function to be applied to MPC")
+  objective: Optional[str] = Field(description="objective function to be applied to MPC")
   equality_constraints: List[str] = Field(description="equality constraints to be applied to MPC")
   inequality_constraints: List[str] = Field(description="inequality constraints to be applied to MPC")
 
@@ -101,12 +86,10 @@ def simulate_stream(avatar:str, text:str, pretty_text:Optional[str]=None):
     session_state.messages.append({"type": avatar, "content":pretty_text})  
 
 ParsingModel = {
-  "plan": Plan,
-  "objective": Objective,
   "optimization": Optimization
 }
 
-class BaseLLM(AbstractLLM):
+class LLM(AbstractLLM):
 
   def __init__(self, cfg: AbstractLLMConfig) -> None:
     super().__init__(cfg)
@@ -141,7 +124,7 @@ class BaseLLM(AbstractLLM):
     return self.parser.parse(model_message.content)
   
 
-class BaseVLM(AbstractLLM):
+class VLM(AbstractLLM):
 
   def __init__(self, cfg: AbstractLLMConfig) -> None:
     super().__init__(cfg)
