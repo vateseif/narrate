@@ -283,18 +283,17 @@ class OptimizationController(BaseController):
 	def apply_gpt_message(self, optimization: Optimization, observation: Dict[str, np.ndarray]) -> None:
 		# init model newly
 		self.init_model()
+		# init variables and expressions
+		self.init_expressions()
 		# set cost function
 		self.set_cost_expression(self._eval(optimization.objective, observation))
 		# setup model
 		self.model.setup()
 		# init mpc newly
 		self.init_mpc()
-		# apply constraint function
 		# NOTE use 1e-6 when doing task L 
 		regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
 		self.set_objective(self._eval(optimization.objective, observation) + regularization)
-		# init variables and expressions
-		self.init_expressions()
 		# set base constraint functions
 		constraints = []
 		# positive equality constraint
