@@ -163,7 +163,7 @@ class BaseVLM(AbstractLLM):
     payload = {
       "model": self.cfg.model_name,
       "messages": [m.to_dict() for m in self.messages],
-      "max_tokens": 150
+      "max_tokens": self.cfg.max_tokens
     }
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=self.headers, json=payload).json()
     # retrieve text response

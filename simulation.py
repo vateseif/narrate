@@ -23,7 +23,7 @@ class Simulation(AbstractSimulation):
 
         self.cfg = cfg
         # init env
-        self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render)
+        self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render, debug=cfg.debug)
         # init robots
         # count number of tasks solved from a plan 
         self.task_counter = 0
@@ -76,6 +76,9 @@ class Simulation(AbstractSimulation):
         self.robot.init_states(self.observation, self.t)
         # compute action
         action = self.robot.step() # TODO: this is a list because the env may have multiple robots
+        if self.cfg.debug:
+            trajectory = self.robot.retrieve_trajectory()
+            self.env.visualize_trajectory(trajectory)
         # apply action
         self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video

@@ -75,7 +75,12 @@ class BaseRobot(AbstractRobot):
     if self.gripper==0 and self.gripper_timer>self.cfg.open_gripper_time: 
       self.gripper = 1.
     else:
-      self.gripper_timer += 1 
-    
-    
+      self.gripper_timer += 1
+
     return action
+
+  def retrieve_trajectory(self):
+    return self.MPC.retrieve_trajectory()
+    
+    
+    

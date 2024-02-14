@@ -4,6 +4,7 @@ from prompts.prompts import *
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
+  debug: bool = True
   env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   task: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
@@ -37,6 +38,7 @@ class VLMConfig(AbstractLLMConfig):
   model_name: str = "gpt-4-vision-preview"
   streaming: bool = False
   temperature: float = 0.6
+  max_tokens: int = 150
 
 class ObjectiveLLMConfig(AbstractLLMConfig):
   prompt: str = OBJECTIVE_DESIGNER_PROMPT
