@@ -153,3 +153,5 @@ keys/
 
 # Mac stuff
 *.DS_Store
+
+*.docx
