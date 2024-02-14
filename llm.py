@@ -24,7 +24,7 @@ class Optimization(BaseModel):
   inequality_constraints: List[str] = Field(description="inequality constraints to be applied to MPC")
 
   def pretty_print(cls):
-    pretty_msg = "Applying the following MPC fomulation:\n```\n"
+    pretty_msg = "Applying the following MPC formulation:\n```\n"
     pretty_msg += f"min {cls.objective}\n"
     pretty_msg += f"s.t.\n"
     for c in cls.equality_constraints:
