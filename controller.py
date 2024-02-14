@@ -69,12 +69,12 @@ class Controller(AbstractController):
 	def setup_controller(self, optimization=Optimization(objective=None, equality_constraints=[], inequality_constraints=[])):
 		self.init_model()
 		# init states
-		# init variables and expressions
-		self.init_expressions()
 		# init cost function
 		self.model.set_expression('cost', self._eval(optimization.objective))
 		# setup model
 		self.model.setup()
+		# init variables and expressions
+		self.init_expressions()
 		# init
 		self.init_mpc()
 		# set functions
@@ -260,6 +260,5 @@ class Controller(AbstractController):
 				trajectory.append(_x[:3])
 		except:
 			pass
-
 		return trajectory
 

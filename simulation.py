@@ -1,14 +1,20 @@
 import os
+import io
 import sys
 import cv2
 import gym
 import base64
+import asyncio
 import panda_gym
 import numpy as np
-from datetime import datetime
-import asyncio
-from aiohttp import web
 from tqdm import tqdm
+from PIL import Image
+from aiohttp import web
+from docx import Document
+from docx.shared import Inches
+from datetime import datetime
+
+
 
 from robot import Robot
 from core import AbstractSimulation, BASE_DIR
@@ -40,21 +46,33 @@ class Simulation(AbstractSimulation):
         self.frames_list = []
         self.video_name = f"{self.cfg.env_name}_{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
         self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
-
+        # init log file
+        if self.cfg.logging:
+            self.doc_path = os.path.join(BASE_DIR, f"logs/{self.video_name}.docx")
+            self.doc = Document()
+            self.doc.save(self.doc_path)
+                
     def _plan_task(self, user_message:str) -> str:
         # retrieve current frame
-        frame = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
-        frame = frame.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB)
+        frame_np = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
+        frame_np = frame_np.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
+        frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2RGB)
         # convert to base64
-        _, buffer = cv2.imencode('.jpg', frame)
+        _, buffer = cv2.imencode('.jpg', frame_np)
         frame = base64.b64encode(buffer).decode('utf-8')
         # run VLM
         task:str = self.robot.plan_task(user_message, frame)
+
+        if self.cfg.logging:
+            self._add_text_to_doc("SYSTEM: " + user_message)
+            self._add_image_to_doc(frame_np)
+            self._add_text_to_doc("TP: " + task)
         return task
     
     def _solve_task(self, task:str):
         AI_response = self.robot.solve_task(task)
+        if self.cfg.logging:
+            self._add_text_to_doc("OD: " + AI_response)
         return AI_response
 
     def reset(self):
@@ -113,6 +131,22 @@ class Simulation(AbstractSimulation):
             out.write(frame_bgr)
         # Release the VideoWriter
         out.release()
+
+    def _add_text_to_doc(self, text):
+        self.doc.add_paragraph(text)
+        self.doc.save(self.doc_path)
+
+    def _add_image_to_doc(self, image):
+        image = Image.fromarray(image)
+        # Save the PIL image to a bytes buffer
+        image_buffer = io.BytesIO()
+        image.save(image_buffer, format="PNG")  # You can use JPEG or PNG
+        image_buffer.seek(0)  # Move to the beginning of the buffer
+
+        # Add the image from the bytes buffer to the document
+        self.doc.add_picture(image_buffer, width=Inches(4))  # Adjust width as necessary
+        
+        self.doc.save(self.doc_path)
 
     async def http_plan_task(self, request):
         data = await request.json()
