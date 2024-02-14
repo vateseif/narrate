@@ -6,7 +6,7 @@ At each step I will provide you with the image of the current scene and you will
 You must assume that the robot doesn't have common sense so you have to be meticoulous in your instructions each time you provide them.
 
 This is the description of the scene:
-  - There are 4 different cubes that you can manipulate: cube_1, cube_2, cube_3, cube_4
+  - There are 4 different cubes that you can manipulate: blue cube, red cube, green cube and yellow cube
   - All cubes have the same side length of 0.06m
   - When moving the gripper specify which cubes it has to avoid collisions with
   - Make sure to specify to avoid the cubes from colliding with each other when you pick and place them
@@ -14,9 +14,9 @@ This is the description of the scene:
 Example 1:
   ~~~
   Task: 
-      If you want the gripper to go behind cube_1
+      If you want the gripper to go behind the blue cube
   Output:
-      Move the gripper 0.06m behind cube_1 avoiding collisions with it 
+      Move the gripper 0.06m behind blue cube avoiding collisions with it 
   ~~~
 
 Example 2:
@@ -30,9 +30,9 @@ Example 2:
 Example 2:
   ~~~
   Task: 
-      If tthe robot has gripped cube_1 and you want the robot to place it next to cube_2
+      If tthe robot has gripped blue cube and you want the robot to place it next to green cube
   Output:
-      Move gripper 0.06m to the right of cube_2 avoiding collisions with it
+      Move gripper 0.06m to the right of the green cube avoiding collisions with it
   ~~~
 
 Rules:
@@ -46,7 +46,7 @@ OBJECTIVE_TASK_PLANNER_PROMPT = """
   You are a helpful assistant in charge of controlling a robot manipulator.
   Your task is that of creating a full plan of what the robot has to do once a command from the user is given to you.
   This is the description of the scene:
-    - There are 4 different cubes that you can manipulate: cube_1, cube_2, cube_3, cube_4
+    - There are 4 different cubes that you can manipulate: blue_cube, green_cube, yellow_cube, red_cube
     - All cubes have the same side length of 0.08m
     - If you want to pick a cube: first move the gripper above the cube and then lower it to be able to grasp the cube:
         Here's an example if you want to pick a cube:
@@ -78,7 +78,7 @@ OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES = """
 You are a helpful assistant in charge of controlling a robot manipulator.
 Your task is that of creating a full and precise plan of what the robot has to do once a command from the user is given to you.
 This is the description of the scene:
-  - There are 4 different cubes that you can manipulate: cube_1, cube_2, cube_3, cube_4
+  - There are 4 different cubes that you can manipulate: blue_cube, green_cube, yellow_cube, red_cube
   - All cubes have the same side length of 0.09m
   - When moving the gripper specify which cubes it has to avoid collisions with
   - Make sure to avoid the cubes from colliding with each other when you pick and place them
@@ -200,9 +200,9 @@ OBJECTIVE_DESIGNER_PROMPT = """
   Here is example 1:
   ~~~
   Task: 
-      move the gripper behind cube_1
+      move the gripper behind blue_cube
   Output:
-      sum([cp.norm(xt - (cube_1 + np.array([-0.08, 0, 0]) )) for xt in self.x]) # gripper is moved 1 side lenght behind cube_1
+      sum([cp.norm(xt - (blue_cube + np.array([-0.08, 0, 0]) )) for xt in self.x]) # gripper is moved 1 side lenght behind blue_cube
   ~~~
 
   {format_instructions}
@@ -225,9 +225,9 @@ OPTIMIZATION_DESIGNER_PROMPT = """
   Here is example 1:
   ~~~
   Task: 
-      "move the gripper 0.1m behind cube_1"
+      "move the gripper 0.1m behind blue_cube"
   Output:
-      reward = "sum([cp.norm(xt - (cube_1 - np.array([0.1, 0.0, 0.0]))) for xt in self.x])" # gripper is moved 1 side lenght behind cube_1
+      reward = "sum([cp.norm(xt - (blue_cube - np.array([0.1, 0.0, 0.0]))) for xt in self.x])" # gripper is moved 1 side lenght behind blue_cube
       constraints = [""]
   ~~~
 
@@ -251,9 +251,9 @@ NMPC_OBJECTIVE_DESIGNER_PROMPT = """
   Here is example 1:
   ~~~
   Task: 
-      move the gripper behind cube_1
+      move the gripper behind blue_cube
   Output:
-      objective = "ca.norm_2(x - (cube_1 + np.array([-0.0468, 0, 0])))**2" 
+      objective = "ca.norm_2(x - (blue_cube + np.array([-0.0468, 0, 0])))**2" 
   ~~~
 
   {format_instructions}
@@ -272,8 +272,8 @@ This is the scene description:
   - The variables `x0` represents the fixed position of the gripper before any action is applied.
   - The orientation of the gripper around the z-axis is defined by variable `psi`.
   - The variable `t` represents the simulation time.
-  - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
-  - The orientations around the z-axis of each cube are defined by variables `cube_1_psi` `cube_2_psi` `cube_3_psi` `cube_4_psi`.
+  - There are 4 cubes on the table and the variables `red_cube` `blue_cube` `green_cube` `yellow_cube` represent their postions in 3D.
+  - The orientations around the z-axis of each cube are defined by variables `blue_cube_psi` `green_cube_psi` `yellow_cube_psi` `red_cube_psi`.
   - All cubes have side length of 0.06m.
 
 Rules:
@@ -282,7 +282,7 @@ Rules:
   - You MUST write every inequality constraints such that it is satisfied if it is <= 0:
       If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
   - You MUST provide the constraints as a list of strings.
-  - The objective and constraints can be a function of `x`, `cube_1`, `cube_1_psi`, ... and/or `t`. 
+  - The objective and constraints can be a function of `x`, `blue_cube`, `blue_cube_psi`, ... and/or `t`. 
   - Use `t` in the inequalities especially when you need to describe motions of the gripper.
   - If you want to avoid colliding with a cube, the right safety margin is half of its side length.
     
@@ -290,9 +290,9 @@ Rules:
 Example 1:
 ~~~
 Task: 
-    "move gripper 0.03m behind the cube_1 and keep gripper at a height higher than 0.1m"
+    "move gripper 0.03m behind the blue_cube and keep gripper at a height higher than 0.1m"
 Output:
-    "objective": "ca.norm_2(x - (cube_1 + np.array([-0.03, 0, 0])))**2",
+    "objective": "ca.norm_2(x - (blue_cube + np.array([-0.03, 0, 0])))**2",
     "equality_constraints": [],
     "inequality_constraints": ["0.1 - ca.norm_2(x[2])"]
 ~~~
@@ -332,7 +332,7 @@ This is the scene description:
   - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
   - The variables `x0` represents the fixed position of the gripper before any action is applied.
   - The variable `t` represents the simulation time.
-  - There are 4 cubes on the table and the variables `cube_1` `cube_2` `cube_3` `cube_4` represent their postions in 3D.
+  - There are 4 cubes on the table and the variables `blue_cube` `green_cube` `yellow_cube` `red_cube` represent their postions in 3D.
   - All cubes have side length of 0.04685m.
 
 Rules:
@@ -343,9 +343,9 @@ Rules:
 Example 1:
 ~~~
 Task: 
-    "move gripper 0.03m behind the cube_1"
+    "move gripper 0.03m behind the blue_cube"
 Output:
-    "objective": "ca.norm_2(x - (cube_1 + np.array([-0.03, 0, 0])))**2"
+    "objective": "ca.norm_2(x - (blue_cube + np.array([-0.03, 0, 0])))**2"
 ~~~
 
 Example 2:
