@@ -28,18 +28,18 @@ class Robot(AbstractRobot):
   def _close_gripper(self):
     self.gripper = -1.
 
-  def plan_task(self, user_message:str, base64_image) -> str:
+  def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
     return self.TP.run(user_message, base64_image)
 
   def solve_task(self, plan:str) -> str:
     """ Applies and returns the optimization designed by the Optimization Designer """
     # if custom function is called apply that
-    if "open" in plan.lower() and "gripper" in plan.lower():
+    if "open_gripper" in plan.lower():
       self._open_gripper()
       #simulate_stream("OD", "\n```\n open_gripper()\n```\n")
       return "\n```\n open_gripper()\n```\n"
-    elif "close" in plan.lower() and "gripper" in plan.lower():
+    elif "close_gripper" in plan.lower():
       self._close_gripper()
       #simulate_stream("OD", "\n```\n close_gripper()\n```\n")
       return "\n```\n close_gripper()\n```\n"
