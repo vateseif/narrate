@@ -31,7 +31,7 @@ class Simulation(AbstractSimulation):
         # init robots
         # count number of tasks solved from a plan 
         self.task_counter = 0
-        self.prev_OD_response = ""
+        self.prev_OD_response = "None"
 
         # simulation time
         self.t = 0.
@@ -55,21 +55,36 @@ class Simulation(AbstractSimulation):
 
     def _round_list(self, l, n=2):
         """ round list and if the result is -0.0 convert it to 0.0 """
-        return [round(x, n) if round(x, n) != -0.0 else 0.0 for x in l]
+        return [r if (r:=round(x, n)) != -0.0 else 0.0 for x in l]
     
     def _create_scene_description(self):
         """ Look at the observation and create a string that describes the scene to be passed to the task planner """
         ri = 0
-        description = "The following is the description of the current scene. Only use this description to decide what to do next.\n"
+        description = "The following is the description of the current scene:\n"
         for name in self.observation.keys():
             if name.startswith("robot"):
-                description += f"- The center of gripper (between the 2 fingers) of the {name} is located at {self._round_list(self.observation[name][:3])}.\n"
-                description += f"- The gripper fingers are {round(self.env.robots[ri].get_fingers_width(),2)} apart and the last instruction given to the gripper is {'open_gripper()' if self.robot.gripper>-1 else 'close_gripper()'}.\n"
+                robot_xyz = self._round_list(self.observation[name][:3])
+                description += f"- The gripper of of the {name} is located at {robot_xyz}.\n"
+                if self.robot.gripper==-1:
+                    if round(self.env.robots[ri].get_fingers_width(),2) <= 0.01: 
+                        description += f"- The gripper fingers have closed but they are grasping no object.\n"
+                    else:
+                        distances = {cube_name: np.linalg.norm(np.array(robot_xyz)-np.array(self.observation[cube_name])) for cube_name in self.observation.keys() if cube_name.endswith("_cube")}
+                        closest_cube = min(distances, key=distances.get)[:-5]
+                        description += f"- The gripper fingers are closed and they are firmly grasping the {closest_cube} cube.\n"
                 ri += 1
             elif name.endswith("_cube"):
                 description += f"- The center of the {name[:-5]} cube is located at {self._round_list(self.observation[name])}\n"
             else:
                 pass
+        
+        description += """Please carefully analyze the scene description and decide what to do next. Some helpful tips are:\n
+            (1) If you asked the robot to move to a position but it's not there, it is surely because there are collisions/obstructions. Update your instruction with collision avoidance instructions.\n
+            (3) Be careful when placing a cube on top of another one that you leave some clearence between the bottom and top of the cubes before opening the gripper.\n
+            (4) Make sure that the cube you've put on the stack have not fallen\n
+                (a) A cube is on the ground if it's height is 0.02m.\n
+                (a) If you stacked a cube and need to go to another one, make sure to instruct the robot to avoid collisions with the cubes in the stack.\n\n
+        """
 
         return description
 

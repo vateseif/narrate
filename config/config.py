@@ -25,7 +25,7 @@ class TPConfig(AbstractLLMConfig):
     self.mock_task = None # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   avatar: str = "TP"
-  model_name: str = "gpt-4"
+  model_name: str = "gpt-4-0125-preview"
   streaming: bool = False
   temperature: float = 0.9
   max_tokens: int = 500
