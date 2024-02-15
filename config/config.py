@@ -1,17 +1,23 @@
-from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from prompts.prompts import *
+from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
+from typing import List
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
-  debug: bool = False
+  debug: bool = True
+  logging: bool = True
   env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   task: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
-  width: int = 1024
-  height: int = 1024
+  frame_width: int = 512
+  frame_height: int = 512
+  frame_target_position: List[float] = [0.2, 0., 0.]
+  frame_distance: float = 1.3
+  frame_yaw: int = 90
+  frame_pitch: int = -30
 
 
 class TPConfig(AbstractLLMConfig):
@@ -19,10 +25,10 @@ class TPConfig(AbstractLLMConfig):
     self.mock_task = None # TODO wtf this is shit
     self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
   avatar: str = "TP"
-  model_name: str = "gpt-4-vision-preview"
+  model_name: str = "gpt-4"
   streaming: bool = False
-  temperature: float = 0.6
-  max_tokens: int = 150
+  temperature: float = 0.9
+  max_tokens: int = 500
 
 
 class ODConfig(AbstractLLMConfig):

@@ -1,52 +1,78 @@
-VLMPROMPT = """
+TP_PROMPT = """
 You are a helpful assistant in charge of controlling a robot manipulator.
-Your objective is to give instructions to the robot such that it can perform the task of stacking cubes on top of each other.
-At each step I will provide you with the image of the current scene and you will have to give the next instruction to the robot.
 
-You must assume that the robot doesn't have common sense so you have to be meticoulous in your instructions each time you provide them.
+There are exactly 4 cubes that the robot can interact with: blue, red, green and orange. All cubes have the same side length of 0.06m.
 
-This is the description of the scene:
-  - There are 4 different cubes that you can manipulate: blue cube, red cube, green cube and yellow cube
-  - All cubes have the same side length of 0.06m
-  - When moving the gripper specify which cubes it has to avoid collisions with
-  - Make sure to specify to avoid the cubes from colliding with each other when you pick and place them
+Your ultimate goal is to give instrcuctions to the robot in order to stack all cubes on top of the green cube.
+At each step I will provide you with a description of the new scene and you will have to provide the next instruction to the robot. The robot will convert your instruction into a casadi optimization function and solve it using a MPC controller.
 
-Example 1:
-  ~~~
-  Task: 
-      If you want the gripper to go behind the blue cube
-  Output:
-      Move the gripper 0.06m behind blue cube avoiding collisions with it 
-  ~~~
+Everytime you recieve the description of the neew scene you first have to understand if the previous instruction was successful. The robot will always apply your insctructions but it's possible the instruction is not successful.
+Given the description of the scene you must understand if the instruction was exectuted executed. If not you have to understand why and change the instruction to the robot.
 
-Example 2:
-  ~~~
-  Task: 
-      If the cube is exactly between the gripper fingers and you want the robot to grab the cube
-  Output:
-      Close the gripper
-  ~~~
+You can control the robot in the following way:
+  1. instructions in natural language to move the gripper of the robot
+    1.1. x meters from its current position or position of a cube in any direction (i.e. `move gripper 0.1m upwards`)
+    1.2. to the center of an object (i.e. `move gripper to the center of the blue cube avoiding collisions with it`)
+    1.3. in the proximity of an object (i.e. `move gripper above the red cube`) 
+    1.4. to a specific [x, y, z] posistion (i.e. `move gripper to [0.3, 0.2, 0.4]`)
+  2. open_gripper()
+  3. close_gripper()
 
-Example 2:
-  ~~~
-  Task: 
-      If tthe robot has gripped blue cube and you want the robot to place it next to green cube
-  Output:
-      Move gripper 0.06m to the right of the green cube avoiding collisions with it
-  ~~~
+The gripper is fully open when the distance between the fingers is 0.08m. The gripper is fully closed when the distance between the fingers is 0.0m.
+The gripper has firmly grasped an object if the distance between the fingers is between 0.01m and 0.07m.
+
+Be very careful and try to understand if the gripper is colliding with any object. If it is colliding with a cube you have to specify that it has to avoid collisions with that specific cube.
 
 Rules:
   1. You MUST provide one instruction only at a time
-  2. If you want to pick a cube you have to avoid colliding with all cubes, including the one to pick
-  3. If you already picked a cube (i.e. you closed the gripper) then you must not avoid colliding with that specific cube
+  2. You MUST always describe your reasoning
+  2. If the gripper has grasped an object it MUST not avoid collisions with that specific object
+
+Notes:
+  1. If the robot is doing something wrong (i.e. it's colliding with a cube) you have to specify that it has to avoid collisions with that specific cube.
+  2. Be very meticoulous about the collisions to specify
+  3. If you tell the robot to move the gripper to a cube avoiding collisions with it, you don't have to first instruct it to go above the cube and then lower the gripper to grasp it.
+  4. The position of the gripper and the cubes is given in the format [x, y, z].
+  5. Stacking the cubes means the cubes have to be on top of each other on the z axis.
 """
+
+TP_PROMPT_VISION = """
+You are a helpful assistant in charge of controlling a robot manipulator.
+
+There are exactly 4 cubes that the robot can interact with: blue, red, green and orange. All cubes have the same side length of 0.06m.
+
+Your ultimate goal is to give instrcuctions to the robot in order to stack all cubes on top of the green cube.
+At each step I will provide you with the image of the current scene and the action that the robot has previously taken. 
+The robot actions are in the format of an optimization function written in casadi that is solved by an MPC controller.
+
+Everytime you recieve the image of the current scene you first have to describe accurately the scene, understand if the previous instruction was successful. If not you have to understand why and then provide the next instruction to the robot.
+
+You can control the robot in the following way:
+  1. instructions in natural language to move the gripper of the robot
+    1.1. x meters from its current position or position of a cube in any direction (i.e. `move gripper 0.1m upwards`)
+    1.2. to the center of an object (i.e. `move gripper to the center of the blue cube`)
+    1.3. to a posistion avoiding collisions (i.e. `move gripper to [0.3, 0.2, 0.4] avoiding collisions with the red cube`)
+  2. open_gripper()
+  3. close_gripper()
+
+Rules:
+  1. You MUST provide one instruction only at a time
+  2. You MUST make your decision only depending on the image provided at the current time step
+  3. You MUST always provide the description of the scene before giving the instruction
+
+Notes:
+  1. If the robot is doing something wrong (i.e. it's colliding with a cube) you have to specify that it has to avoid collisions with that specific cube.
+  2. Be very meticoulous about the collisions to specify
+"""
+
+
 
 # task planner prompt
 OBJECTIVE_TASK_PLANNER_PROMPT = """
   You are a helpful assistant in charge of controlling a robot manipulator.
   Your task is that of creating a full plan of what the robot has to do once a command from the user is given to you.
   This is the description of the scene:
-    - There are 4 different cubes that you can manipulate: blue_cube, green_cube, yellow_cube, red_cube
+    - There are 4 different cubes that you can manipulate: blue_cube, green_cube, orange_cube, red_cube
     - All cubes have the same side length of 0.08m
     - If you want to pick a cube: first move the gripper above the cube and then lower it to be able to grasp the cube:
         Here's an example if you want to pick a cube:
@@ -78,7 +104,7 @@ OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES = """
 You are a helpful assistant in charge of controlling a robot manipulator.
 Your task is that of creating a full and precise plan of what the robot has to do once a command from the user is given to you.
 This is the description of the scene:
-  - There are 4 different cubes that you can manipulate: blue_cube, green_cube, yellow_cube, red_cube
+  - There are 4 different cubes that you can manipulate: blue_cube, green_cube, orange_cube, red_cube
   - All cubes have the same side length of 0.09m
   - When moving the gripper specify which cubes it has to avoid collisions with
   - Make sure to avoid the cubes from colliding with each other when you pick and place them
@@ -272,8 +298,8 @@ This is the scene description:
   - The variables `x0` represents the fixed position of the gripper before any action is applied.
   - The orientation of the gripper around the z-axis is defined by variable `psi`.
   - The variable `t` represents the simulation time.
-  - There are 4 cubes on the table and the variables `red_cube` `blue_cube` `green_cube` `yellow_cube` represent their postions in 3D.
-  - The orientations around the z-axis of each cube are defined by variables `blue_cube_psi` `green_cube_psi` `yellow_cube_psi` `red_cube_psi`.
+  - There are 4 cubes on the table and the variables `red_cube` `blue_cube` `green_cube` `orange_cube` represent their postions in 3D.
+  - The orientations around the z-axis of each cube are defined by variables `blue_cube_psi` `green_cube_psi` `orange_cube_psi` `red_cube_psi`.
   - All cubes have side length of 0.06m.
 
 Rules:
@@ -332,7 +358,7 @@ This is the scene description:
   - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
   - The variables `x0` represents the fixed position of the gripper before any action is applied.
   - The variable `t` represents the simulation time.
-  - There are 4 cubes on the table and the variables `blue_cube` `green_cube` `yellow_cube` `red_cube` represent their postions in 3D.
+  - There are 4 cubes on the table and the variables `blue_cube` `green_cube` `orange_cube` `red_cube` represent their postions in 3D.
   - All cubes have side length of 0.04685m.
 
 Rules:
@@ -683,10 +709,10 @@ Output:
 
 
 TP_PROMPTS = {
-  "stack": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
-  "pyramid": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
-  "L": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
-  "reverse": OPTIMIZATION_TASK_PLANNER_PROMPT_CUBES,
+  "stack": TP_PROMPT,
+  "pyramid": TP_PROMPT,
+  "L": TP_PROMPT,
+  "reverse": TP_PROMPT,
   "clean_plate": OPTIMIZATION_TASK_PLANNER_PROMPT_CLEAN_PLATE,
   "move_table": OPTIMIZATION_TASK_PLANNER_PROMPT_MOVE_TABLE,
   "sponge": OPTIMIZATION_TASK_PLANNER_PROMPT_SPONGE
@@ -700,15 +726,4 @@ OD_PROMPTS = {
   "clean_plate": NMPC_OPTIMIZATION_DESIGNER_PROMPT_CLEAN_PLATE,
   "move_table": NMPC_OPTIMIZATION_DESIGNER_PROMPT_MOVE_TABLE,
   "sponge": NMPC_OPTIMIZATION_DESIGNER_PROMPT_SPONGE
-}
-
-
-OD_PROMPTS_OBJ = {
-  "stack": NMPC_OBJECTIVE_DESIGNER_PROMPT_CUBES,
-  "pyramid": NMPC_OBJECTIVE_DESIGNER_PROMPT_CUBES,
-  "L": NMPC_OBJECTIVE_DESIGNER_PROMPT_CUBES,
-  "reverse": NMPC_OBJECTIVE_DESIGNER_PROMPT_CUBES,
-  "clean_plate": NMPC_OBJECTIVE_DESIGNER_PROMPT_CLEAN_PLATE,
-  "move_table": NMPC_OBJECTIVE_DESIGNER_PROMPT_MOVE_TABLE,
-  "sponge": NMPC_OBJECTIVE_DESIGNER_PROMPT_SPONGE
 }

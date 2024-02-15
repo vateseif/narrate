@@ -31,6 +31,7 @@ class Simulation(AbstractSimulation):
         # init robots
         # count number of tasks solved from a plan 
         self.task_counter = 0
+        self.prev_OD_response = ""
 
         # simulation time
         self.t = 0.
@@ -51,21 +52,51 @@ class Simulation(AbstractSimulation):
             self.doc_path = os.path.join(BASE_DIR, f"logs/{self.video_name}.docx")
             self.doc = Document()
             self.doc.save(self.doc_path)
+
+    def _round_list(self, l, n=2):
+        """ round list and if the result is -0.0 convert it to 0.0 """
+        return [round(x, n) if round(x, n) != -0.0 else 0.0 for x in l]
+    
+    def _create_scene_description(self):
+        """ Look at the observation and create a string that describes the scene to be passed to the task planner """
+        ri = 0
+        description = "The following is the description of the current scene. Only use this description to decide what to do next.\n"
+        for name in self.observation.keys():
+            if name.startswith("robot"):
+                description += f"- The center of gripper (between the 2 fingers) of the {name} is located at {self._round_list(self.observation[name][:3])}.\n"
+                description += f"- The gripper fingers are {round(self.env.robots[ri].get_fingers_width(),2)} apart and the last instruction given to the gripper is {'open_gripper()' if self.robot.gripper>-1 else 'close_gripper()'}.\n"
+                ri += 1
+            elif name.endswith("_cube"):
+                description += f"- The center of the {name[:-5]} cube is located at {self._round_list(self.observation[name])}\n"
+            else:
+                pass
+
+        return description
+
+        
                 
     def _plan_task(self, user_message:str) -> str:
         # retrieve current frame
-        frame_np = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
-        frame_np = frame_np.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
-        frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2RGB)
+        """
+        frame_np = np.array(self.env.render("rgb_array", 
+                                            width=self.cfg.frame_width, height=self.cfg.frame_height,
+                                            target_position=self.cfg.frame_target_position,
+                                            distance=self.cfg.frame_distance,
+                                            yaw=self.cfg.frame_yaw,
+                                            pitch=self.cfg.frame_pitch))
+        frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
+        frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2BGR)
         # convert to base64
         _, buffer = cv2.imencode('.jpg', frame_np)
         frame = base64.b64encode(buffer).decode('utf-8')
+        """
+        scene_desctiption = self._create_scene_description()
         # run VLM
-        task:str = self.robot.plan_task(user_message, frame)
+        task:str = self.robot.plan_task(f"{scene_desctiption}\n\n {user_message}")
 
         if self.cfg.logging:
-            self._add_text_to_doc("SYSTEM: " + user_message)
-            self._add_image_to_doc(frame_np)
+            self._add_text_to_doc("SYSTEM: " + f"{scene_desctiption}\n\n {user_message}\nPrevious robot action was: {self.prev_OD_response}")
+            #self._add_image_to_doc(frame_np)
             self._add_text_to_doc("TP: " + task)
         return task
     
@@ -73,6 +104,8 @@ class Simulation(AbstractSimulation):
         AI_response = self.robot.solve_task(task)
         if self.cfg.logging:
             self._add_text_to_doc("OD: " + AI_response)
+
+        self.prev_OD_response = AI_response
         return AI_response
 
     def reset(self):

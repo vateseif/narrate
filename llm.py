@@ -2,7 +2,6 @@ from time import sleep
 from typing import List, Optional
 from core import AbstractLLM, AbstractLLMConfig
 from mocks.mocks import nmpcMockOptions
-from prompts.prompts import VLMPROMPT
 
 import os
 import requests
@@ -132,7 +131,7 @@ class VLM(AbstractLLM):
     # init messages
     self.messages = []
     # load prompt
-    self.messages.append(Message(text=VLMPROMPT, role="system"))
+    self.messages.append(Message(text=self.cfg.prompt, role="system"))
     # request headers
     self.headers = {
       "Content-Type": "application/json",
@@ -142,12 +141,15 @@ class VLM(AbstractLLM):
   def run(self, user_message:str, base64_image) -> str:
     # add user message to chat history
     self.messages.append(Message(text=user_message, role="user", base64_image=base64_image))
+    # select the last 2 user messages and the last assistant message
+    selected_messages = [self.messages[0]] + [m for m in self.messages[-2:] if m.role!="system"]
     # send request to OpenAI API
     payload = {
       "model": self.cfg.model_name,
       "messages": [m.to_dict() for m in self.messages],
       "max_tokens": self.cfg.max_tokens
     }
+    #print([m.text for m in selected_messages])
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=self.headers, json=payload).json()
     # retrieve text response
     try:
