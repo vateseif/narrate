@@ -5,6 +5,7 @@ import cv2
 import gym
 import base64
 import asyncio
+import requests
 import panda_gym
 import numpy as np
 from tqdm import tqdm
@@ -78,21 +79,38 @@ class Simulation(AbstractSimulation):
             else:
                 pass
         
-        description += """Please carefully analyze the scene description and decide what to do next. Some helpful tips are:\n
-            (1) If you asked the robot to move to a position but it's not there, it is surely because there are collisions/obstructions. Update your instruction with collision avoidance instructions.\n
-            (3) Be careful when placing a cube on top of another one that you leave some clearence between the bottom and top of the cubes before opening the gripper.\n
-            (4) Make sure that the cube you've put on the stack have not fallen\n
-                (a) A cube is on the ground if it's height is 0.02m.\n
-                (a) If you stacked a cube and need to go to another one, make sure to instruct the robot to avoid collisions with the cubes in the stack.\n\n
+        description += """Please carefully analyze the scene description and decide what to do next. Some helpful tips are:
+            (1) If you asked the robot to move to a position but it's not there, it is surely because there are collisions/obstructions. Update your instruction with collision avoidance instructions.
+            (2) Be careful when placing a cube on top of another one that you leave some clearence between the bottom and top of the cubes before opening the gripper.
+            (3) Make sure that the cube you've put on the stack has not fallen
+                (a) A cube is on the ground if it's height is 0.02m.
+                (b) If you stacked a cube and need to go to another one, make sure to instruct the robot to avoid collisions with the cubes in the stack.\n
         """
 
         return description
 
-        
+    def _uplaod_image(self, rgba_image:np.ndarray) -> str:
+        # Convert the NumPy array to a PIL Image object
+        image = Image.fromarray(rgba_image, 'RGBA')
+        # Convert the PIL Image object to a byte stream
+        byte_stream = io.BytesIO()
+        image.save(byte_stream, format='PNG')  # You can change PNG to JPEG if preferred
+        byte_stream.seek(0)  # Seek to the start of the stream
+        # Imgur API details
+        client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
+        headers = {'Authorization': f'Client-ID {client_id}'}
+
+        # Prepare the data for the request
+        data = {'image': byte_stream.read()}
+
+        # Make the POST request to upload the image
+        response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
+
+        return response.json()['data']['link'] if response.status_code == 200 else None
+
                 
     def _plan_task(self, user_message:str) -> str:
         # retrieve current frame
-        """
         frame_np = np.array(self.env.render("rgb_array", 
                                             width=self.cfg.frame_width, height=self.cfg.frame_height,
                                             target_position=self.cfg.frame_target_position,
@@ -100,11 +118,13 @@ class Simulation(AbstractSimulation):
                                             yaw=self.cfg.frame_yaw,
                                             pitch=self.cfg.frame_pitch))
         frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
-        frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2BGR)
-        # convert to base64
-        _, buffer = cv2.imencode('.jpg', frame_np)
-        frame = base64.b64encode(buffer).decode('utf-8')
-        """
+        #frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2BGR)
+        ## convert to base64
+        #_, buffer = cv2.imencode('.jpg', frame_np)
+        #frame = base64.b64encode(buffer).decode('utf-8')
+        # upload image to imgur
+        image_url = self._uplaod_image(frame_np)
+        # create scene description
         scene_desctiption = self._create_scene_description()
         # run VLM
         task:str = self.robot.plan_task(f"{scene_desctiption}\n\n {user_message}")
@@ -113,7 +133,7 @@ class Simulation(AbstractSimulation):
             self._add_text_to_doc("SYSTEM: " + f"{scene_desctiption}\n\n {user_message}\nPrevious robot action was: {self.prev_OD_response}")
             #self._add_image_to_doc(frame_np)
             self._add_text_to_doc("TP: " + task)
-        return task
+        return task, image_url
     
     def _solve_task(self, task:str):
         AI_response = self.robot.solve_task(task)
@@ -199,14 +219,14 @@ class Simulation(AbstractSimulation):
     async def http_plan_task(self, request):
         data = await request.json()
         user_message = data.get('content')
-        task = self._plan_task(user_message)
-        return web.json_response({"avatar": "TP", "content": task})
+        task, image_url = self._plan_task(user_message)
+        return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": task}])
 
     async def http_solve_task(self, request):
         data = await request.json()
         user_task = data.get('content')
         AI_response = self._solve_task(user_task)
-        return web.json_response({"avatar": "OD", "content": AI_response})
+        return web.json_response([{"type": "OD", "content": AI_response}])
     
     async def http_save_recording(self, request):
         self.save_video = False

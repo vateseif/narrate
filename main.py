@@ -11,7 +11,7 @@ st.sidebar.title("Choose model")
 model = st.sidebar.radio("Select the model to talk to", ["Task Planner", "Optimization Designer"])
 
 # init the avatars for the message icons
-avatars = {"human":None, "OD":"images/wall-e.png", "TP":"images/eve.png"}
+avatars = {"human":"images/seif_avatar.jpeg", "OD":"images/wall-e.png", "TP":"images/eve.png"}
 
 # base url to reach sim
 base_url = 'http://localhost:8080/'
@@ -40,50 +40,53 @@ def set_recording_state(i):
 	# Function to update the recording state machine stage
 	st.session_state.recording = i
 
+def append_message(message:dict):
+	# Function to append a message to the chat history
+	message_type = message["type"]
+	if message_type == "image":
+		with st.chat_message("human", avatar=avatars["human"]):
+			st.image(message["content"], width=400, caption="Current scene")
+	else:
+		with st.chat_message(message_type, avatar=avatars[message_type]):
+			st.markdown(message["content"])
+
 # Initialize chat history
 if "messages" not in st.session_state:
 	st.session_state.messages = []
 
 # Display chat messages from history on app rerun
 for message in st.session_state.messages:
-	message_type = message["type"]
-	with st.chat_message(message_type, avatar=avatars[message_type]):
-		st.markdown(message["content"])
+	append_message(message)
 
 # Accept user input
 if prompt := st.chat_input("What should the robot do?"):
 	# Add user message to chat history
 	st.session_state.messages.append({"type": "human", "content":prompt})
 	# Display user message in chat message container
-	with st.chat_message("human"):
+	with st.chat_message("human", avatar=avatars["human"]):
 		st.markdown(prompt)
 
 	# Display assistant response in chat message container
 	if model == "Task Planner":
-		with st.chat_message("TP", avatar=avatars["TP"]):
-			#st.session_state.sim.create_plan(prompt, solve=False)
-			response = requests.post(base_url+'plan_task', json={"content": prompt}).json()["content"]
-			st.session_state.messages.append({"type": "TP", "content": response})
-			st.markdown(response)
-			st.session_state.task = response
-			set_state(1)
+		response = requests.post(base_url+'plan_task', json={"content": prompt}).json()
+		st.session_state.messages += response
+		for m in response: append_message(m)
+		st.session_state.task = response[-1]["content"]
+		set_state(1)
 	elif model == "Optimization Designer":
-		with st.chat_message("OD", avatar=avatars["OD"]):
-			#st.session_state.sim._solve_task(prompt)
-			response = requests.post(base_url+'solve_task', json={"content": prompt}).json()["content"]
-			st.session_state.messages.append({"type": "OD", "content": response})
-			st.markdown(response)
+		response = requests.post(base_url+'solve_task', json={"content": prompt}).json()
+		st.session_state.messages += response
+		for m in response: append_message(m)
 
 if st.session_state.stage == 1:
 	st.button(f'Solve task', on_click=set_state, args=[2])
 
 if st.session_state.stage == 2:
-	with st.chat_message("OD", avatar=avatars["OD"]):
-		task = st.session_state.task
-		response = requests.post(base_url+'solve_task', json={"content": task}).json()["content"]
-		st.session_state.messages.append({"type": "OD", "content": response})
-		st.markdown(response)
-		st.session_state.task = None
+	task = st.session_state.task
+	response = requests.post(base_url+'solve_task', json={"content": task}).json()
+	st.session_state.messages += response
+	for m in response: append_message(m)
+	st.session_state.task = None
 	set_state(0)
 	st.rerun()
 
