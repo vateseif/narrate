@@ -81,7 +81,6 @@ class Controller(AbstractController):
 
 	def setup_controller(self, optimization={"objective":None, "equality_constraints":[], "inequality_constraints":[]}):
 		self.init_model()
-		# init states
 		# init cost function
 		self.model.set_expression('cost', self._eval(optimization["objective"]))
 		# setup model
@@ -161,7 +160,7 @@ class Controller(AbstractController):
 
 	def init_expressions(self):
 		# init variables for python evaluation
-		self.eval_variables = {"ca":ca, "np":np, "t":self.t} # python packages
+		self.eval_variables = {"ca":ca, "np":np} # python packages
 
 		self.R = [] # rotation matrix for angle around z axis
 		for i in range(len(self.robots_info)):
@@ -247,7 +246,7 @@ class Controller(AbstractController):
 			robots_states[f'dx{r["name"]}'] = self.dx[i]
 			robots_states[f'psi{r["name"]}'] = self.psi[i]
 		
-		eval_variables = self.eval_variables | robots_states | self.objects | x0
+		eval_variables = self.eval_variables | robots_states | self.objects | x0 | {'t': self.t}
 		# evaluate code
 		evaluated_code = eval(code_str, eval_variables) + collision_radius
 		return evaluated_code

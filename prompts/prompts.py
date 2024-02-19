@@ -80,6 +80,7 @@ At each step, I will give you a task and you will have to return the objective a
 This is the scene description:
   (1) Casadi is used to program the MPC.
   (2) The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
+  (2) The variable `x0` represents the initial gripper position at the current time step before any action is applied i.e. (x, y, z).
   (3) The orientation of the gripper around the z-axis is defined by variable `psi`.
   (4) The variable `t` represents the simulation time.
   (5) There are 4 cubes on the table represented by `red_cube` `blue_cube` `green_cube` `orange_cube`.
