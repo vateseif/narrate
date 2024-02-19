@@ -5,7 +5,7 @@ from llm import LLM
 from core import AbstractRobot
 from controller import Controller
 from typing import Tuple, List, Dict
-from config.config import RobotConfig, LLMConfig, ODConfig
+from config.config import RobotConfig, LLMConfig
 
 
 class Robot(AbstractRobot):
