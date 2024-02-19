@@ -66,3 +66,7 @@ class RobotConfig(AbstractRobotConfig):
   TIME_THRESHOLD: float = 40
 
 
+class DBConfig:
+  db_name: str = "data/DBs/stack_cubes.db"
+
+

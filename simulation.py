@@ -12,13 +12,11 @@ import numpy as np
 from tqdm import tqdm
 from PIL import Image
 from aiohttp import web
-from docx import Document
-from docx.shared import Inches
 from datetime import datetime
 
 
-
 from robot import Robot
+from db import Session, Episode, Epoch
 from core import AbstractSimulation, BASE_DIR
 from config.config import SimulationConfig, RobotConfig
 
@@ -52,9 +50,7 @@ class Simulation(AbstractSimulation):
         self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
         # init log file
         if self.cfg.logging:
-            self.doc_path = os.path.join(BASE_DIR, f"logs/{self.video_name}.docx")
-            self.doc = Document()
-            self.doc.save(self.doc_path)
+            self.session = Session()
 
     def _round_list(self, l, n=2):
         """ round list and if the result is -0.0 convert it to 0.0 """
@@ -117,12 +113,11 @@ class Simulation(AbstractSimulation):
             # Return the image link
             return response.json()['data']['link']
         else:
-            image_path = f'images/runs/{self.video_name}.png'  # Specify your local file path here
+            image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
             image.save(image_path, 'PNG')
             return image_path
-                
-    def _plan_task(self, user_message:str) -> str:
-        # retrieve current frame
+        
+    def _retrieve_image(self) -> np.ndarray:
         frame_np = np.array(self.env.render("rgb_array", 
                                             width=self.cfg.frame_width, height=self.cfg.frame_height,
                                             target_position=self.cfg.frame_target_position,
@@ -130,24 +125,24 @@ class Simulation(AbstractSimulation):
                                             yaw=self.cfg.frame_yaw,
                                             pitch=self.cfg.frame_pitch))
         frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
-        #frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2BGR)
-        ## convert to base64
-        #_, buffer = cv2.imencode('.jpg', frame_np)
-        #frame = base64.b64encode(buffer).decode('utf-8')
-        # upload image to imgur
-        image_url = self._uplaod_image(frame_np)
-        # create scene description
-        scene_desctiption = self._create_scene_description()
-        # run VLM
-        instruction:str = self.robot.plan_task(f"{scene_desctiption}\n{user_message}\n The previous action was:\n{self.prev_instruction}")
-        
-        if self.cfg.logging:
-            self._add_text_to_doc("**USER**\n" + f"{user_message}\n")
-            self._add_image_to_doc(frame_np)
-            self._add_text_to_doc("**TP**\n" + instruction)
 
-        self.prev_instruction = instruction["instruction"]
-        return instruction, image_url
+        return frame_np
+        
+    def _store_epoch_db(self, episode_id, role, content, image_url):
+        session = Session()
+        
+        # Find the last epoch number for this episode
+        last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
+        if last_epoch is None:
+            next_time_step = 1  # This is the first epoch for the episode
+        else:
+            next_time_step = last_epoch.time_step + 1
+        
+        # Create and insert the new epoch
+        epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
+        session.add(epoch)
+        session.commit()
+        session.close()
     
     def _make_plan(self, user_message:str="") -> str:
         instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
@@ -156,6 +151,11 @@ class Simulation(AbstractSimulation):
         self.task_counter = 0
         pretty_msg = "Tasks:\n"
         pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
+        if self.cfg.logging:
+            image = self._retrieve_image()
+            image_url = self._uplaod_image(image)
+            self._store_epoch_db(self.episode.id, "human", instruction, image_url)
+            self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
         return pretty_msg
     
     def _solve_task(self, task:str):
@@ -163,9 +163,10 @@ class Simulation(AbstractSimulation):
         instruction += f"# Query: {task}"
         AI_response = self.robot.solve_task(instruction)
         if self.cfg.logging and AI_response is not None:
-            self._add_text_to_doc("**OD**\n" + AI_response)
+            image = self._retrieve_image()
+            image_url = self._uplaod_image(image)
+            self._store_epoch_db(self.episode.id, "OD", AI_response, image_url)
 
-        #self.prev_OD_response = AI_response
         return AI_response
 
     def reset(self):
@@ -177,6 +178,14 @@ class Simulation(AbstractSimulation):
         self.task_counter = 0
         # init list of RGB frames if wanna save video
         self.frames_list = []
+        if self.cfg.logging:
+            if self.session is not None:
+                self.session.close()
+            self.session = Session()
+            self.episode = Episode()  # Assuming Episode has other fields you might set
+            self.session.add(self.episode)
+            self.session.commit()
+
 
     def step(self):
         # increase timestep
@@ -206,6 +215,9 @@ class Simulation(AbstractSimulation):
         # init list of RGB frames if wanna save video
         if self.save_video:
             self._save_video()
+
+        if self.cfg.logging:
+            self.session.close()
         # exit
         sys.exit()  
 
@@ -225,22 +237,6 @@ class Simulation(AbstractSimulation):
         # Release the VideoWriter
         out.release()
 
-    def _add_text_to_doc(self, text):
-        self.doc.add_paragraph(text)
-        self.doc.save(self.doc_path)
-
-    def _add_image_to_doc(self, image):
-        image = Image.fromarray(image)
-        # Save the PIL image to a bytes buffer
-        image_buffer = io.BytesIO()
-        image.save(image_buffer, format="PNG")  # You can use JPEG or PNG
-        image_buffer.seek(0)  # Move to the beginning of the buffer
-
-        # Add the image from the bytes buffer to the document
-        self.doc.add_picture(image_buffer, width=Inches(4))  # Adjust width as necessary
-        
-        self.doc.save(self.doc_path)
-
     async def http_solve_task(self, request):
         data = await request.json()
         user_task = data.get('content')
@@ -259,6 +255,8 @@ class Simulation(AbstractSimulation):
             if AI_response is not None: self.task_counter += 1
             return web.json_response([{"type": "OD", "content": AI_response}])
         else:
+            self.session.close()
+            self.session = None
             return web.json_response([{"type": "OD", "content": "finished"}])
     
     async def http_save_recording(self, request):
