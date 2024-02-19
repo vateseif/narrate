@@ -150,7 +150,10 @@ class Simulation(AbstractSimulation):
         return instruction, image_url
     
     def _make_plan(self, user_message:str="") -> str:
-        self.plan:dict = self.robot.plan_task(user_message)
+        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
+        instruction += f"# Query: {user_message}"
+        print(instruction)
+        self.plan:dict = self.robot.plan_task(instruction)
         self.task_counter = 0
         pretty_msg = "Tasks:\n"
         pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])

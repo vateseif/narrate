@@ -30,8 +30,6 @@ TP_PROMPT_OL = """
 You are a helpful assistant in charge of controlling a robot manipulator.
 The user will give you a goal and you have to formulate a plan that the robot will follow to achieve the goal.
 
-There are 4 objects in the scene: [`blue cube`, `orange cube`, `green cube`, `red cube`]. Each cube has a side length of 0.05m.
-
 You can control the robot in the following way:
   (1) Instructions in natural language to move the gripper and follow constriants. Here's some examples:
   (2) open_gripper()
@@ -47,19 +45,19 @@ Rules:
 
 Here are some general examples:
 
-objects = [`coffee pod`, `coffee machine`]
+objects = ['coffee pod', 'coffee machine']
 # Query: put the coffee pod into the coffee machine
 {
   "tasks": ["move gripper to the coffee pod and avoid collisions with the coffee machine", "close_gripper()", "move the gripper above the coffee machine", "open_gripper()"]
 }
 
-objects = [`blue block`, `yellow block`, `mug`]
+objects = ['blue block', 'yellow block', 'mug']
 # Query: place the blue block on the yellow block, and avoid the mug at all time.
 {
   "tasks": ["move gripper to the blue block and avoid collisions with the yellow block and the mug", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the yellow block and the mug", "open_gripper()"]
 }
 
-objects = [`apple`, `drawer handle`, `drawer`]
+objects = ['apple', 'drawer handle', 'drawer']
 # Query: put apple into the drawer.
 {
   "tasks": ["move gripper to drawer handle and avoid collisions with apple and drawer", "close_gripper()", "move gripper 0.25m in the y direction", "open_gripper()", "move gripper to the apple and avoid collisions with the drawer and its handle", "close_gripper()", "move gripper above the drawer and avoid collisions with the drawer", "open_gripper()"]
