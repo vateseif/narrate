@@ -1,4 +1,6 @@
 import numpy as np
+from time import time, sleep
+
 from llm import LLM
 from core import AbstractRobot
 from controller import Controller
@@ -56,11 +58,14 @@ class Robot(AbstractRobot):
     if attempt>1:
       print("ERROR: Too many attempts.")
       return "ERROR"
+    
     print(f"{self.MPC.prev_cost - self.MPC.cost} <= {self.cfg.COST_DIIFF_THRESHOLD} or {self.MPC.cost} <= {self.cfg.COST_THRESHOLD}")
-    if self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD:
+    if self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD or time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD:
       print("SWITCH.")
     else:
       return None
+    
+    self.t_prev_task = time()
 
     if "open_gripper" in plan.lower():
       self._open_gripper()
