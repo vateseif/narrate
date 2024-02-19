@@ -93,7 +93,8 @@ Rules:
   (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
     (a)  If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
   (3) You MUST avoid colliding with an object if you're moving the gripper to that object, even if not specified in the query.
-    (a) Also avoid collision with the object if you're moving the gripper to a position close (i.e. above or to the right) to the object unless specified otherwise.
+    (a) Also, avoid collision with the object if you're moving the gripper to a position close (i.e. above or to the right) to it unless specified otherwise.
+    (b) For the other objects in the scene, only avoid collisions if specified in the query.
   (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
 You must format your response into a json. Here are a few examples:
@@ -123,7 +124,7 @@ Notice the collision avoidance constraint with the red_cube despite not being sp
 
 # Query: move gripper to the right of the orange cube and keep gripper at a height higher than 0.1m
 {
-  "objective": "ca.norm_2(x - (orange_cube.position + np.array([0, 0.06, 0])))**2",
+  "objective": "ca.norm_2(x - (orange_cube.position + np.array([0, orange_cube.size, 0])))**2",
   "equality_constraints": [],
   "inequality_constraints": ["orange_cube.size - ca.norm_2(x - orange_cube.position)", "0.1 - x[2]"]
 }
