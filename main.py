@@ -1,6 +1,7 @@
 import json
 import requests
 import streamlit as st
+from time import sleep
 
 # Init streamlit page
 st.title("Language to Optimization")
@@ -80,14 +81,20 @@ if prompt := st.chat_input("What should the robot do?"):
 		for m in response: append_message(m)
 
 if st.session_state.stage == 1:
-	st.button(f'Solve task', on_click=set_state, args=[2])
+	st.button(f'Execute Plan', on_click=set_state, args=[2])
 
 if st.session_state.stage == 2:
+	st.button(f'Stop Plan', on_click=set_state, args=[0])
 	response = requests.get(base_url+'next_task').json()
-	st.session_state.messages += response
-	for m in response: append_message(m)
-	set_state(1)
+	if response[-1]['content'] == "finished":
+		set_state(0)
+	elif response[-1]['content'] is not None:
+		for m in response: append_message(m)
+		st.session_state.messages += response
+	sleep(3)
 	st.rerun()
+	
+
 
 if st.session_state.recording == 0:
 	st.sidebar.button('Start recording', on_click=set_recording_state, args=[1])

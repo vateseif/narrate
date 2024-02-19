@@ -259,10 +259,10 @@ class Simulation(AbstractSimulation):
     async def http_next_task(self, request):
         if self.task_counter < len(self.plan["tasks"]):
             AI_response = self._solve_task(self.plan["tasks"][self.task_counter])
-            self.task_counter += 1
+            if AI_response is not None: self.task_counter += 1
             return web.json_response([{"type": "OD", "content": AI_response}])
         else:
-            return web.json_response({"response": "No more tasks to solve"})
+            return web.json_response([{"type": "OD", "content": "finished"}])
     
     async def http_save_recording(self, request):
         self.save_video = False

@@ -53,6 +53,13 @@ class Robot(AbstractRobot):
   def solve_task(self, plan:str) -> str:
     """ Applies and returns the optimization designed by the Optimization Designer """
     # if custom function is called apply that
+    
+    print(f"{self.MPC.prev_cost - self.MPC.cost} <= {self.cfg.COST_DIIFF_THRESHOLD} or {self.MPC.cost} <= {self.cfg.COST_THRESHOLD}")
+    if self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD:
+      print("SWITCH.")
+    else:
+      return None
+
     if "open_gripper" in plan.lower():
       self._open_gripper()
       #simulate_stream("OD", "\n```\n open_gripper()\n```\n")

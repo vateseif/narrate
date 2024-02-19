@@ -65,6 +65,7 @@ class Controller(AbstractController):
 		self.u = []       # gripper control (=velocity)
 		self.u_psi = []   # gripper rotation control (=rotational velocity)
 		self.cost = 0.    # cost function
+		self.prev_cost = 0. # previous cost function
 		for i, r in enumerate(self.robots_info):
 			# position (x, y, z)
 			self.x.append(self.model.set_variable(var_type='_x', var_name=f'x{r["name"]}', shape=(self.cfg.nx,1)))
@@ -265,6 +266,7 @@ class Controller(AbstractController):
 			psi_rotation = [u0[4*i+3]]            # rotation control
 			action.append(np.concatenate((ee_displacement, theta_rotation, gamma_rotation, psi_rotation)))
 
+		self.prev_cost = self.cost
 		self.cost = self.mpc.data['_aux'][-1][-1]
 
 		return action
