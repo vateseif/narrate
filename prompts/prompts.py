@@ -81,10 +81,10 @@ This is the scene description:
   (2) The variable `x0` represents the initial gripper position at the current time step before any action is applied i.e. (x, y, z).
   (3) The orientation of the gripper around the z-axis is defined by variable `psi`.
   (4) The variable `t` represents the simulation time.
-  (5) There are 4 cubes on the table represented by `red_cube` `blue_cube` `green_cube` `orange_cube`.
-      (a) The position of each cube is obtained by adding `.position` (i.e. `red_cube.position`).
-      (b) The size of each cube is obtained by adding `.size` (i.e. `red_cube.size`).
-      (c) The rotaton around the z-axis is obtained by adding `.psi` (i.e. `red_cube.psi`).
+  (5) Each time I will also give you a list of objects you can interact with (i.e. objects = ['peach', 'banana']).
+      (a) The position of each object is an array [x, y, z] obtained by adding `.position` (i.e. 'banana.position').
+      (b) The size of each cube is a float obtained by adding '.size' (i.e. 'banana.size').
+      (c) The rotaton around the z-axis is a float obtained by adding '.psi' (i.e. 'banana.psi').
 
 Rules:
   (1) You MUST write every equality constraints such that it is satisfied if it is = 0:
@@ -97,7 +97,8 @@ Rules:
   (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
 You must format your response into a json. Here are a few examples:
-  
+
+objects = ['object_1', 'object_2']
 # Query: move the gripper to [0.2, 0.05, 0.2] and avoid collisions with object_2
 {
   "objective": "ca.norm_2(x - np.array([0.2, 0.05, 0.2]))**2",
@@ -106,6 +107,7 @@ You must format your response into a json. Here are a few examples:
 }
 Notice how the inequality constraint holds if <= 0.
 
+objects = ['red_cube', 'yellow_cube']
 # Query: move the gripper to red cube and avoid colliding with the yellow cube
 {
   "objective": "ca.norm_2(x - red_cube.position)**2",
@@ -114,20 +116,15 @@ Notice how the inequality constraint holds if <= 0.
 }
 Notice the collision avoidance constraint with the red_cube despite not being specified in the query.
 
-# Query: move gripper above the blue cube and keep gripper at a height higher than 0.1m
+objects = ['coffee_pod', 'coffee_machine']
+# Query: move gripper above the coffe pod and keep gripper at a height higher than 0.1m
 {
-  "objective": "ca.norm_2(x - (blue_cube.position + np.array([-0.06, 0, 0])))**2",
+  "objective": "ca.norm_2(x - (coffee_pod.position + np.array([-0.06, 0, 0])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["blue_cube.size - ca.norm_2(x - blue_cube.position)", "0.1 - x[2]"]
+  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "coffee_machine.size - ca.norm_2(x - coffee_machine.position)", "0.1 - x[2]"]
 }
 
-# Query: move gripper to the right of the orange cube and keep gripper at a height higher than 0.1m
-{
-  "objective": "ca.norm_2(x - (orange_cube.position + np.array([0, orange_cube.size, 0])))**2",
-  "equality_constraints": [],
-  "inequality_constraints": ["orange_cube.size - ca.norm_2(x - orange_cube.position)", "0.1 - x[2]"]
-}
-
+objects = []
 # Query: Move the gripper 0.1m upwards
 {
   "objective": "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2",
@@ -135,13 +132,15 @@ Notice the collision avoidance constraint with the red_cube despite not being sp
   "inequality_constraints": []
 }
 
-# Query: move the gripper to object_1 and stay 0.04m away from object_2
+objects = ['apple', 'pear']
+# Query: move the gripper to apple and stay 0.04m away from pear
 {
-  "objective": "ca.norm_2(x - object_1.position)**2",
+  "objective": "ca.norm_2(x - apple.position)**2",
   "equality_constraints": [],
-  "inequality_constraints": ["object_1.size*0.85 - ca.norm_2(x - object_1.position)", "0.04 - ca.norm_2(x - object_2.position)"]
+  "inequality_constraints": ["apple.size*0.85 - ca.norm_2(x - apple.position)", "0.04 - ca.norm_2(x - pear.position)"]
 }
 
+objects = []
 # Query: Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m
 {
   "objective": "ca.norm_2(x_left[0] - t)**2",

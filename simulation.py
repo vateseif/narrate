@@ -152,7 +152,6 @@ class Simulation(AbstractSimulation):
     def _make_plan(self, user_message:str="") -> str:
         instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
         instruction += f"# Query: {user_message}"
-        print(instruction)
         self.plan:dict = self.robot.plan_task(instruction)
         self.task_counter = 0
         pretty_msg = "Tasks:\n"
@@ -160,7 +159,9 @@ class Simulation(AbstractSimulation):
         return pretty_msg
     
     def _solve_task(self, task:str):
-        AI_response = self.robot.solve_task(task)
+        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
+        instruction += f"# Query: {task}"
+        AI_response = self.robot.solve_task(instruction)
         if self.cfg.logging:
             self._add_text_to_doc("OD: " + AI_response)
 
