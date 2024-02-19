@@ -121,10 +121,10 @@ objects = ['coffee_pod', 'coffee_machine']
 {
   "objective": "ca.norm_2(x - (coffee_pod.position + np.array([-0.06, 0, 0])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "coffee_machine.size - ca.norm_2(x - coffee_machine.position)", "0.1 - x[2]"]
+  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "0.1 - x[2]"]
 }
 
-objects = []
+objects = ['mug']
 # Query: Move the gripper 0.1m upwards
 {
   "objective": "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2",
@@ -140,7 +140,7 @@ objects = ['apple', 'pear']
   "inequality_constraints": ["apple.size*0.85 - ca.norm_2(x - apple.position)", "0.04 - ca.norm_2(x - pear.position)"]
 }
 
-objects = []
+objects = ['joystick', 'remote']
 # Query: Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m
 {
   "objective": "ca.norm_2(x_left[0] - t)**2",
