@@ -1,3 +1,4 @@
+import json
 import requests
 import streamlit as st
 
@@ -68,10 +69,10 @@ if prompt := st.chat_input("What should the robot do?"):
 
 	# Display assistant response in chat message container
 	if model == "Task Planner":
-		response = requests.post(base_url+'plan_task', json={"content": prompt}).json()
+		response = requests.post(base_url+'make_plan', json={"content": prompt}).json()
 		st.session_state.messages += response
 		for m in response: append_message(m)
-		st.session_state.task = response[-1]["content"]
+		#st.session_state.task = response[-2]["content"]
 		set_state(1)
 	elif model == "Optimization Designer":
 		response = requests.post(base_url+'solve_task', json={"content": prompt}).json()
@@ -82,12 +83,10 @@ if st.session_state.stage == 1:
 	st.button(f'Solve task', on_click=set_state, args=[2])
 
 if st.session_state.stage == 2:
-	task = st.session_state.task
-	response = requests.post(base_url+'solve_task', json={"content": task}).json()
+	response = requests.get(base_url+'next_task').json()
 	st.session_state.messages += response
 	for m in response: append_message(m)
-	st.session_state.task = None
-	set_state(0)
+	set_state(1)
 	st.rerun()
 
 if st.session_state.recording == 0:

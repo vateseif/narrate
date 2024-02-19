@@ -1,9 +1,9 @@
 import numpy as np
-from llm import LLM, VLM
+from llm import LLM
 from core import AbstractRobot
 from controller import Controller
 from typing import Tuple, List, Dict
-from config.config import RobotConfig, TPConfig, ODConfig
+from config.config import RobotConfig, LLMConfig, ODConfig
 
 
 class Robot(AbstractRobot):
@@ -12,14 +12,32 @@ class Robot(AbstractRobot):
 
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
-    self.TP = VLM(TPConfig(self.cfg.task))
-    self.OD = LLM(ODConfig(self.cfg.task))
+    self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
+    self.OD = LLM(LLMConfig("OD", self.cfg.task))
     
     self.MPC = Controller(env_info)
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
       """ Update simulation time and current state of MPC controller"""
-      self.MPC.init_states(observation, t)
+      self.MPC.init_states(observation, t, self.gripper==-1.)
+
+  def pretty_print(self, response:dict):
+    if "instruction" in response.keys():
+      pretty_msg = "**Reasoning:**\n"
+      pretty_msg += f"{response['reasoning']}\n"
+      pretty_msg += "**Instruction:**\n"
+      pretty_msg += f"{response['instruction']}\n"
+    else:
+      pretty_msg = "```\n"
+      pretty_msg += f"min {response['objective']}\n"
+      pretty_msg += f"s.t.\n"
+      for c in response['equality_constraints']:
+        pretty_msg += f"\t {c} = 0\n"
+      for c in response['inequality_constraints']:
+        pretty_msg += f"\t {c} <= 0\n"
+      pretty_msg += "```\n"
+    
+    return pretty_msg
 
   def _open_gripper(self):
     self.gripper = 0.
@@ -30,7 +48,7 @@ class Robot(AbstractRobot):
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
-    return self.TP.run(user_message, base64_image)
+    return self.TP.run(user_message, base64_image, short_history=True)
 
   def solve_task(self, plan:str) -> str:
     """ Applies and returns the optimization designed by the Optimization Designer """
@@ -49,7 +67,7 @@ class Robot(AbstractRobot):
       optimization = self.OD.run(plan)
       # apply optimization functions to MPC
       self.MPC.setup_controller(optimization)
-      return optimization.pretty_print()
+      return self.pretty_print(optimization)
     except Exception as e:
       print(f"Error: {e}")
       return "ERROR"

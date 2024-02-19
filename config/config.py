@@ -1,4 +1,4 @@
-from prompts.prompts import *
+from prompts.prompts import PROMPTS, OD_PROMPTS
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from typing import List
 
@@ -6,7 +6,7 @@ from typing import List
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = True
-  logging: bool = True
+  logging: bool = False
   env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   task: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
   save_video: bool = False
@@ -20,11 +20,11 @@ class SimulationConfig(AbstractSimulaitonConfig):
   frame_pitch: int = -30
 
 
-class TPConfig(AbstractLLMConfig):
-  def __init__(self, task:str=None) -> None:
+class LLMConfig(AbstractLLMConfig):
+  def __init__(self, avatar:str, task:str=None) -> None:
+    self.avatar: str = avatar
     self.mock_task = None # TODO wtf this is shit
-    self.prompt: str = TP_PROMPTS[task] # TODO: this is bad. Only works for Optimization now
-  avatar: str = "TP"
+    self.prompt: str = PROMPTS[avatar][task] # TODO: this is bad. Only works for Optimization now
   model_name: str = "gpt-4-0125-preview"
   streaming: bool = False
   temperature: float = 0.9

@@ -5,8 +5,6 @@ from time import sleep
 from itertools import chain
 from typing import Dict, List, Optional, Tuple
 
-
-from llm import Optimization
 from core import AbstractController
 from config.config import ControllerConfig
 
@@ -18,14 +16,21 @@ class Controller(AbstractController):
 		# init info of robots and objects
 		self.robots_info, self.objects_info = env_info
 
-		# init controller
-		self.setup_controller()
+		
 
 		# gripper fingers offset for constraints 
 		self.gripper_offsets = [(np.array([0., -0.048, 0.003]), 0.0135), (np.array([0., 0.048, 0.003]), 0.0135), 
 								(np.array([0., 0.0, 0.055]), 0.025), (np.array([0., -0.045, 0.055]), 0.025),
 								(np.array([0., 0.045, 0.055]), 0.025), (np.array([0., -0.09, 0.055]), 0.025), (np.array([0., 0.09, 0.055]), 0.025)
 								]
+		
+		self.gripper_offsets_load = [(np.array([0., 0., 0.]), 0.03)]
+
+
+		self.gripper_closed = False
+
+		# init controller
+		self.setup_controller()
 
 	def init_model(self):
 		# inti do_mpc model
@@ -66,11 +71,11 @@ class Controller(AbstractController):
 			self.model.set_rhs(f'dx{r["name"]}', self.u[i])
 			self.model.set_rhs(f'dpsi{r["name"]}', self.u_psi[i])
 
-	def setup_controller(self, optimization=Optimization(objective=None, equality_constraints=[], inequality_constraints=[])):
+	def setup_controller(self, optimization={"objective":None, "equality_constraints":[], "inequality_constraints":[]}):
 		self.init_model()
 		# init states
 		# init cost function
-		self.model.set_expression('cost', self._eval(optimization.objective))
+		self.model.set_expression('cost', self._eval(optimization["objective"]))
 		# setup model
 		self.model.setup()
 		# init variables and expressions
@@ -80,15 +85,16 @@ class Controller(AbstractController):
 		# set functions
 		# TODO: should the regularization be always applied?
 		regularization = 0#1 * ca.norm_2(self.dpsi)**2 #+ 0.1 * ca.norm_2(self.psi - np.pi/2)**2
-		self.set_objective(self._eval(optimization.objective) + regularization)
+		self.set_objective(self._eval(optimization["objective"]) + regularization)
 		# set base constraint functions
 		constraints = []
 		# positive equality constraint
-		constraints += [self._eval(c) for c in optimization.equality_constraints]
+		constraints += [self._eval(c) for c in optimization["equality_constraints"]]
 		# negative equality constraint
-		constraints += [-self._eval(c) for c in optimization.equality_constraints]
+		constraints += [-self._eval(c) for c in optimization["equality_constraints"]]
 		# inequality constraints
-		inequality_constraints = [[*map(lambda const: self._eval(c, const), self.gripper_offsets)] for c in optimization.inequality_constraints]
+		gripper_offsets = self.get_gripper_offsets()
+		inequality_constraints = [[*map(lambda const: self._eval(c, const), gripper_offsets)] for c in optimization["inequality_constraints"]]
 		constraints += list(chain(*inequality_constraints))
 		# set constraints
 		self.set_constraints(constraints)
@@ -188,8 +194,9 @@ class Controller(AbstractController):
 		# set x0 in MPC
 		self.mpc.x0 = np.concatenate(x0)
 
-	def init_states(self, observation:Dict[str, np.ndarray], t:float):
+	def init_states(self, observation:Dict[str, np.ndarray], t:float, gripper_closed:bool=False):
 		""" Set the values the MPC initial states and variables """
+		self.gripper_closed = gripper_closed
 		self.observation = observation
 		# set mpc x0
 		self._set_x0(observation)
@@ -199,6 +206,13 @@ class Controller(AbstractController):
 		parameters = parameters | {o['name'].replace("_orientation", "_psi"): [self._quaternion_to_euler_angle_vectorized2(observation[o['name']])[-1]] for o in self.objects_info if o["name"].endswith("_orientation")}
 		#print(parameters)
 		self.mpc.set_uncertainty_values(**parameters)
+
+	def get_gripper_offsets(self):
+		if self.gripper_closed:
+			gripper_offset = self.gripper_offsets + self.gripper_offsets_load	
+		else:
+			gripper_offset = self.gripper_offsets
+		return gripper_offset
 
 	def reset(self, observation: Dict[str, np.ndarray], t:float = 0) -> None:
 		"""
