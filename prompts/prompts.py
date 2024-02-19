@@ -65,10 +65,10 @@ objects = [`apple`, `drawer handle`, `drawer`]
   "tasks": ["move gripper to drawer handle and avoid collisions with apple and drawer", "close_gripper()", "move gripper 0.25m in the y direction", "open_gripper()", "move gripper to the apple and avoid collisions with the drawer and its handle", "close_gripper()", "move gripper above the drawer and avoid collisions with the drawer", "open_gripper()"]
 }
 
-objects = ['plate', 'steak', 'fork', 'knife', 'spoon', 'glass]
+objects = ['plate', 'fork', 'knife', 'glass]
 # Query: Order the kitchen utensils on the table.
 {
-  "tasks": ["move gripper to the fork and avoid collisions with the other objects", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with the other objects", "open_gripper()", "move gripper to the knife and avoid collisions with the other objects", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with the other objects", "open_gripper()", "move gripper to the glass and avoid collisions with the other objects", "close_gripper()", "move gripper in front of the plate avoiding collisions with the other objects", "open_gripper()"]
+  "tasks": ["move gripper to the fork and avoid collisions with plate, knife, glass", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with plate, knife, glass", "open_gripper()", "move gripper to the knife and avoid collisions with fork, plate, glass", "close_gripper()", "move gripper to the left side of the fork avoiding collisions with fork, plate, glass", "open_gripper()", "move gripper to the glass and avoid collisions with fork, plate, knife", "close_gripper()", "move gripper in front of the plate avoiding collisions with fork plate knife", "open_gripper()"]
 }
 """
 

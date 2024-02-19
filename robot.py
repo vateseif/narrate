@@ -50,10 +50,12 @@ class Robot(AbstractRobot):
     """ Runs the Task Planner by passing the user message and the current frame """
     return self.TP.run(user_message, base64_image, short_history=True)
 
-  def solve_task(self, plan:str) -> str:
+  def solve_task(self, plan:str, attempt:int=0) -> str:
     """ Applies and returns the optimization designed by the Optimization Designer """
     # if custom function is called apply that
-    
+    if attempt>1:
+      print("ERROR: Too many attempts.")
+      return "ERROR"
     print(f"{self.MPC.prev_cost - self.MPC.cost} <= {self.cfg.COST_DIIFF_THRESHOLD} or {self.MPC.cost} <= {self.cfg.COST_THRESHOLD}")
     if self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD:
       print("SWITCH.")
@@ -77,7 +79,7 @@ class Robot(AbstractRobot):
       return self.pretty_print(optimization)
     except Exception as e:
       print(f"Error: {e}")
-      return "ERROR"
+      self.solve_task('There was an error in the formulation. Please retry with a simpler formulation.', attempt+1)
 
   def step(self):
     action = []
