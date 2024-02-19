@@ -78,13 +78,14 @@ You are a helpful assistant in charge of designing the optimization problem for 
 At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
 
 This is the scene description:
-  - Casadi is used to program the MPC.
-  - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
-  - The orientation of the gripper around the z-axis is defined by variable `psi`.
-  - The variable `t` represents the simulation time.
-  - There are 4 cubes on the table and the variables `red_cube` `blue_cube` `green_cube` `orange_cube` represent their postions in 3D.
-  - The orientations around the z-axis of each cube are defined by variables `blue_cube_psi` `green_cube_psi` `orange_cube_psi` `red_cube_psi`.
-  - All cubes have side length of 0.06m.
+  (1) Casadi is used to program the MPC.
+  (2) The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
+  (3) The orientation of the gripper around the z-axis is defined by variable `psi`.
+  (4) The variable `t` represents the simulation time.
+  (5) There are 4 cubes on the table represented by `red_cube` `blue_cube` `green_cube` `orange_cube`.
+      (a) The position of each cube is obtained by adding `.position` (i.e. `red_cube.position`).
+      (b) The size of each cube is obtained by adding `.size` (i.e. `red_cube.size`).
+      (c) The rotaton around the z-axis is obtained by adding `.psi` (i.e. `red_cube.psi`).
 
 Rules:
   (1) You MUST write every equality constraints such that it is satisfied if it is = 0:
@@ -101,30 +102,30 @@ You must format your response into a json. Here are a few examples:
 {
   "objective": "ca.norm_2(x - np.array([0.2, 0.05, 0.2]))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["0.035 - ca.norm_2(x - object_2)"]
+  "inequality_constraints": ["object_2.size - ca.norm_2(x - object_2.position)"]
 }
 Notice how the inequality constraint holds if <= 0.
 
 # Query: move the gripper to red cube and avoid colliding with the yellow cube
 {
-  "objective": "ca.norm_2(x - red_cube)**2",
+  "objective": "ca.norm_2(x - red_cube.position)**2",
   "equality_constraints": [],
-  "inequality_constraints": ["0.035 - ca.norm_2(x - red_cube)", "0.035 - ca.norm_2(x - yellow_cube)"]
+  "inequality_constraints": ["red_cube.size*0.85 - ca.norm_2(x - red_cube.position)", "yellow_cube.size - ca.norm_2(x - yellow_cube.position)"]
 }
 Notice the collision avoidance constraint with the red_cube despite not being specified in the query.
 
 # Query: move gripper above the blue cube and keep gripper at a height higher than 0.1m
 {
-  "objective": "ca.norm_2(x - (blue_cube + np.array([-0.06, 0, 0])))**2",
+  "objective": "ca.norm_2(x - (blue_cube.position + np.array([-0.06, 0, 0])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["0.035 - ca.norm_2(x - blue_cube)", "0.1 - x[2]"]
+  "inequality_constraints": ["blue_cube.size - ca.norm_2(x - blue_cube.position)", "0.1 - x[2]"]
 }
 
 # Query: move gripper to the right of the orange cube and keep gripper at a height higher than 0.1m
 {
-  "objective": "ca.norm_2(x - (blue_cube + np.array([0, 0.06, 0])))**2",
+  "objective": "ca.norm_2(x - (orange_cube.position + np.array([0, 0.06, 0])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["0.1 - x[2]"]
+  "inequality_constraints": ["orange_cube.size - ca.norm_2(x - orange_cube.position)", "0.1 - x[2]"]
 }
 
 # Query: Move the gripper 0.1m upwards
@@ -136,9 +137,9 @@ Notice the collision avoidance constraint with the red_cube despite not being sp
 
 # Query: move the gripper to object_1 and stay 0.04m away from object_2
 {
-  "objective": "ca.norm_2(x - object_1)**2",
+  "objective": "ca.norm_2(x - object_1.position)**2",
   "equality_constraints": [],
-  "inequality_constraints": ["0.035 - ca.norm_2(x - object_1)", "0.04 - ca.norm_2(x - object_2)"]
+  "inequality_constraints": ["object_1.size*0.85 - ca.norm_2(x - object_1.position)", "0.04 - ca.norm_2(x - object_2.position)"]
 }
 
 # Query: Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m

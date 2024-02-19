@@ -8,6 +8,14 @@ from typing import Dict, List, Optional, Tuple
 from core import AbstractController
 from config.config import ControllerConfig
 
+
+class Object:
+	def __init__(self, name:str, position:np.ndarray=np.zeros((3,1)), psi:float=0., size:float=0.) -> None:
+		self.name = name
+		self.position = position
+		self.psi = psi
+		self.size = size
+
 class Controller(AbstractController):
 
 	def __init__(self, env_info:Tuple[List], cfg=ControllerConfig) -> None:
@@ -19,9 +27,9 @@ class Controller(AbstractController):
 		
 
 		# gripper fingers offset for constraints 
-		self.gripper_offsets = [(np.array([0., -0.048, 0.003]), 0.0135), (np.array([0., 0.048, 0.003]), 0.0135), 
-								(np.array([0., 0.0, 0.055]), 0.025), (np.array([0., -0.045, 0.055]), 0.025),
-								(np.array([0., 0.045, 0.055]), 0.025), (np.array([0., -0.09, 0.055]), 0.025), (np.array([0., 0.09, 0.055]), 0.025)
+		self.gripper_offsets = [(np.array([0., -0.048, 0.003]), 0.013), (np.array([0., 0.048, 0.003]), 0.013), 
+								(np.array([0., 0.0, 0.06]), 0.025), (np.array([0., -0.045, 0.06]), 0.025),
+								(np.array([0., 0.045, 0.06]), 0.025), (np.array([0., -0.09, 0.06]), 0.025), (np.array([0., 0.09, 0.06]), 0.025)
 								]
 		
 		self.gripper_offsets_load = [(np.array([0., 0., 0.]), 0.03)]
@@ -41,12 +49,12 @@ class Controller(AbstractController):
 		# position of objects
 		self.objects = {} 
 		for o in self.objects_info:
-			if not o['name'].endswith("_orientation"):
-				self.objects[o['name']] = self.model.set_variable(var_type='_p', var_name=o['name'], shape=(3,1))
-			else:
-				name = o['name'].replace("_orientation", "_psi")
-				self.objects[name] = self.model.set_variable(var_type='_p', var_name=name)
-		
+			position = self.model.set_variable(var_type='_p', var_name=o['name']+'_position', shape=(3,1))
+			psi = self.model.set_variable(var_type='_p', var_name=o['name']+'_psi')
+			size = self.model.set_variable(var_type='_p', var_name=o['name']+'_size')
+			obj = Object(o['name'], position, psi, size)
+			self.objects[o['name']] = obj
+
 		# gripper pose [x, y, z, theta, gamma, psi]       
 		self.pose = []    
 		
@@ -202,8 +210,9 @@ class Controller(AbstractController):
 		self._set_x0(observation)
 		# set variable parameters
 		parameters = {'t': [t]}
-		parameters = parameters | {o['name']: [observation[o['name']]] for o in self.objects_info if not o["name"].endswith("_orientation")}
-		parameters = parameters | {o['name'].replace("_orientation", "_psi"): [self._quaternion_to_euler_angle_vectorized2(observation[o['name']])[-1]] for o in self.objects_info if o["name"].endswith("_orientation")}
+		parameters = parameters | {o['name']+'_position': [observation[o['name']]['position']] for o in self.objects_info}
+		parameters = parameters | {o['name']+'_size': [observation[o['name']]['size']] for o in self.objects_info}
+		parameters = parameters | {o['name']+'_psi': [self._quaternion_to_euler_angle_vectorized2(observation[o['name']]['orientation'])[-1]] for o in self.objects_info if o["name"].endswith("_orientation")}
 		#print(parameters)
 		self.mpc.set_uncertainty_values(**parameters)
 
