@@ -92,8 +92,8 @@ Rules:
   (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
     (a)  If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
   (3) You MUST avoid colliding with an object if you're moving the gripper to that object, even if not specified in the query.
-    (a) Also, avoid collision with the object if you're moving the gripper to a position close (i.e. above or to the right) to it unless specified otherwise.
-    (b) For the other objects in the scene, only avoid collisions if specified in the query.
+    (a) Also, avoid collision with an object if I instruct you to move the gripper to a position close (i.e. above or to the right) to that object.
+    (b) For the other objects in the scene, if not specified in my instruction, you MUST NOT avoid collisions with them.
   (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
 You must format your response into a json. Here are a few examples:
@@ -123,6 +123,7 @@ objects = ['coffee_pod', 'coffee_machine']
   "equality_constraints": [],
   "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "0.1 - x[2]"]
 }
+Notice that there's no collision avoidance constraint with the coffee_machine because not in the query and because gripper is not moving to or nearby it.
 
 objects = ['mug']
 # Query: Move the gripper 0.1m upwards
@@ -874,13 +875,13 @@ Output:
 
 PROMPTS = {
     "TP_OL": {
-        "stack": TP_PROMPT_OL
+        "Cubes": TP_PROMPT_OL
     },
     "TP_CL": {
-        "stack": TP_PROMPT_CL
+        "Cubes": TP_PROMPT_CL
     },
     "OD": {
-        "stack": OD_PROMPT,
+        "Cubes": OD_PROMPT,
     },
 }
 

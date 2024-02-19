@@ -6,9 +6,8 @@ from typing import List
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = True
-  logging: bool = False
-  env_name: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
-  task: str = "stack"  # [None, "stack", "pyramid", "L", "reverse", "clean_plate", "sponge", "move_table"]
+  logging: bool = True
+  task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller

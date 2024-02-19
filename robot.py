@@ -21,7 +21,7 @@ class Robot(AbstractRobot):
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
       """ Update simulation time and current state of MPC controller"""
-      self.MPC.init_states(observation, t, self.gripper==-1.)
+      self.MPC.init_states(observation, t, self.gripper==-0.02)
 
   def pretty_print(self, response:dict):
     if "instruction" in response.keys():
@@ -42,11 +42,11 @@ class Robot(AbstractRobot):
     return pretty_msg
 
   def _open_gripper(self):
-    self.gripper = 0.
+    self.gripper = -0.01
     self.gripper_timer = 0
 
   def _close_gripper(self):
-    self.gripper = -1.
+    self.gripper = -0.02
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
@@ -59,10 +59,7 @@ class Robot(AbstractRobot):
       print("ERROR: Too many attempts.")
       return "ERROR"
     
-    print(f"{self.MPC.prev_cost - self.MPC.cost} <= {self.cfg.COST_DIIFF_THRESHOLD} or {self.MPC.cost} <= {self.cfg.COST_THRESHOLD}")
-    if self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD or time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD:
-      print("SWITCH.")
-    else:
+    if not (self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD or time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD):
       return None
     
     self.t_prev_task = time()
@@ -94,7 +91,7 @@ class Robot(AbstractRobot):
       action.append(np.hstack((u, self.gripper)))  
     
     # Logic for opening and closing gripper
-    if self.gripper==0 and self.gripper_timer>self.cfg.open_gripper_time: 
+    if self.gripper<0.9 and self.gripper >= -0.01 and self.gripper_timer>self.cfg.open_gripper_time: 
       self.gripper = 1.
     else:
       self.gripper_timer += 1

@@ -29,7 +29,7 @@ class Simulation(AbstractSimulation):
 
         self.cfg = cfg
         # init env
-        self.env = gym.make(f"Panda{cfg.env_name}-v2", render=cfg.render, debug=cfg.debug)
+        self.env = gym.make(f"Panda{cfg.task}-v2", render=cfg.render, debug=cfg.debug)
         # init robots
         # count number of tasks solved from a plan 
         self.plan = None
@@ -48,7 +48,7 @@ class Simulation(AbstractSimulation):
         self.save_video = False
         # init list of RGB frames if wanna save video
         self.frames_list = []
-        self.video_name = f"{self.cfg.env_name}_{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
+        self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
         self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
         # init log file
         if self.cfg.logging:
@@ -142,9 +142,9 @@ class Simulation(AbstractSimulation):
         instruction:str = self.robot.plan_task(f"{scene_desctiption}\n{user_message}\n The previous action was:\n{self.prev_instruction}")
         
         if self.cfg.logging:
-            self._add_text_to_doc("SYSTEM: " + f"{scene_desctiption}\n{user_message}\nPrevious instruction was:\n{self.prev_instruction}")
-            #self._add_image_to_doc(frame_np)
-            self._add_text_to_doc("TP: " + instruction)
+            self._add_text_to_doc("**USER**\n" + f"{user_message}\n")
+            self._add_image_to_doc(frame_np)
+            self._add_text_to_doc("**TP**\n" + instruction)
 
         self.prev_instruction = instruction["instruction"]
         return instruction, image_url
@@ -162,8 +162,8 @@ class Simulation(AbstractSimulation):
         instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
         instruction += f"# Query: {task}"
         AI_response = self.robot.solve_task(instruction)
-        if self.cfg.logging:
-            self._add_text_to_doc("OD: " + AI_response)
+        if self.cfg.logging and AI_response is not None:
+            self._add_text_to_doc("**OD**\n" + AI_response)
 
         #self.prev_OD_response = AI_response
         return AI_response
@@ -241,13 +241,6 @@ class Simulation(AbstractSimulation):
         
         self.doc.save(self.doc_path)
 
-    async def http_plan_task(self, request):
-        data = await request.json()
-        user_message = data.get('content')
-        instruction, image_url = self._plan_task(user_message)
-        optimization = self._solve_task(instruction["instruction"])
-        return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}, {"type": "OD", "content": optimization}])
-
     async def http_solve_task(self, request):
         data = await request.json()
         user_task = data.get('content')
@@ -302,7 +295,6 @@ class Simulation(AbstractSimulation):
     def run(self):
         app = web.Application()
         app.add_routes([
-            web.post('/plan_task', self.http_plan_task),
             web.post('/make_plan', self.http_make_plan),
             web.post('/solve_task', self.http_solve_task),
             web.get('/next_task', self.http_next_task),
