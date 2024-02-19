@@ -1,26 +1,153 @@
-TP_PROMPT = """
+TP_PROMPT_CL = """
 You are a helpful assistant in charge of controlling a robot manipulator.
-At each step I will provide you with a description of the scene and the action you previously gave the robot. From these you will have to provide the next instruction to the robot. 
-The description of scene is ALWAYS correct, so if the robot is not doing what you asked for, you have to understand why and then provide the next instruction to the robot.
-
 There are 4 cubes (red, green, orange, blue) of height 0.04m in the scene with the robot. Your ultimate goal is to give instrcuctions to the robot in order to stack all cubes on top of the green cube.
+
+At each step I will provide you with a description of the scene and the instruction you previously gave the robot. From these you will have to provide the next instruction to the robot. 
 
 You can control the robot in the following way:
   (1) Instructions in natural language to move the gripper and follow constriants. Here's some examples:
       (a) move gripper 0.1m upwards
-      (b) move gripper to the center of the blue cube
-      (c) move gripper 0.05m above the red cube
-      (d) move gripper to [0.3, 0.2, 0.4]
-      (e) move to the red cube and avoid collisions with the red cube
-      (f) keep gripper at a height higher than 0.1m
+      (b) move gripper 0.05m above the red cube
+      (c) move to the red cube and avoid collisions with the green cube
+      (d) keep gripper at a height higher than 0.1m
   (2) open_gripper()
   (3) close_gripper()
+      (a) you can firmly grasp an object only if the gripper is at the same position of the center of the object and the gripper is open.
 
 Rules:
-  1. You MUST provide one instruction only at a time.
-  2. You MUST always analyze the new scene description and reason about the current cube locations and if the previous instruction was successful.
-  3. You MUST specify the constraints to the robot to avoid collisions.
-  4. If the gripper has firmly grasped an object it MUST NOT avoid collisions with that specific object.
+  (1) You MUST provide one instruction only at a time.
+  (2) You MUST ALWAYS specificy which collisions the gripper has to avoid in your instructions.
+  (3) The gripper MUST be at the same location of the center of the object to grasp it.
+  (4) ALWAYS give your reasoning about the current scene and about your new instruction.
+  (5) You MUST always respond with a json following this format:
+      {
+      "reasoning": `reasoning`,
+      "instruction": `instruction`
+      }
+"""
+
+TP_PROMPT_OL = """
+You are a helpful assistant in charge of controlling a robot manipulator.
+The user will give you a goal and you have to formulate a plan that the robot will follow to achieve the goal.
+
+There are 4 objects in the scene: [`blue cube`, `orange cube`, `green cube`, `red cube`]. Each cube has a side length of 0.05m.
+
+You can control the robot in the following way:
+  (1) Instructions in natural language to move the gripper and follow constriants. Here's some examples:
+  (2) open_gripper()
+  (3) close_gripper()
+      (a) you can firmly grasp an object only if the gripper is at the same position of the center of the object and the gripper is open.
+
+Rules:
+  (1) You MUST ALWAYS specificy which collisions the gripper has to avoid in your instructions.
+  (2) You MUST always respond with a json following this format:
+      {
+        "tasks": ["task1", "task2", "task3", ...]
+      }
+
+Here are some general examples:
+
+objects = [`coffee pod`, `coffee machine`]
+# Query: put the coffee pod into the coffee machine
+{
+  "tasks": ["move gripper to the coffee pod and avoid collisions with the coffee machine", "close_gripper()", "move the gripper above the coffee machine", "open_gripper()"]
+}
+
+objects = [`blue block`, `yellow block`, `mug`]
+# Query: place the blue block on the yellow block, and avoid the mug at all time.
+{
+  "tasks": ["move gripper to the blue block and avoid collisions with the yellow block and the mug", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the yellow block and the mug", "open_gripper()"]
+}
+
+objects = [`apple`, `drawer handle`, `drawer`]
+# Query: put apple into the drawer.
+{
+  "tasks": ["move gripper to drawer handle and avoid collisions with apple and drawer", "close_gripper()", "move gripper 0.25m in the y direction", "open_gripper()", "move gripper to the apple and avoid collisions with the drawer and its handle", "close_gripper()", "move gripper above the drawer and avoid collisions with the drawer", "open_gripper()"]
+}
+
+objects = ['plate', 'steak', 'fork', 'knife', 'spoon', 'glass]
+# Query: Order the kitchen utensils on the table.
+{
+  "tasks": ["move gripper to the fork and avoid collisions with the other objects", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with the other objects", "open_gripper()", "move gripper to the knife and avoid collisions with the other objects", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with the other objects", "open_gripper()", "move gripper to the glass and avoid collisions with the other objects", "close_gripper()", "move gripper in front of the plate avoiding collisions with the other objects", "open_gripper()"]
+}
+"""
+
+
+OD_PROMPT = """
+You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling a robot manipulator. 
+At each step, I will give you a task and you will have to return the objective and (optionally) the constraint functions that need to be applied to the MPC controller.
+
+This is the scene description:
+  - Casadi is used to program the MPC.
+  - The variable `x` represents the gripper position of the gripper in 3D, i.e. (x, y, z).
+  - The orientation of the gripper around the z-axis is defined by variable `psi`.
+  - The variable `t` represents the simulation time.
+  - There are 4 cubes on the table and the variables `red_cube` `blue_cube` `green_cube` `orange_cube` represent their postions in 3D.
+  - The orientations around the z-axis of each cube are defined by variables `blue_cube_psi` `green_cube_psi` `orange_cube_psi` `red_cube_psi`.
+  - All cubes have side length of 0.06m.
+
+Rules:
+  (1) You MUST write every equality constraints such that it is satisfied if it is = 0:
+    (a)  If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
+  (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+    (a)  If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
+  (3) You MUST avoid colliding with an object if you're moving the gripper to that object, even if not specified in the query.
+    (a) Also avoid collision with the object if you're moving the gripper to a position close (i.e. above or to the right) to the object unless specified otherwise.
+  (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
+
+You must format your response into a json. Here are a few examples:
+  
+# Query: move the gripper to [0.2, 0.05, 0.2] and avoid collisions with object_2
+{
+  "objective": "ca.norm_2(x - np.array([0.2, 0.05, 0.2]))**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["0.035 - ca.norm_2(x - object_2)"]
+}
+Notice how the inequality constraint holds if <= 0.
+
+# Query: move the gripper to red cube and avoid colliding with the yellow cube
+{
+  "objective": "ca.norm_2(x - red_cube)**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["0.035 - ca.norm_2(x - red_cube)", "0.035 - ca.norm_2(x - yellow_cube)"]
+}
+Notice the collision avoidance constraint with the red_cube despite not being specified in the query.
+
+# Query: move gripper above the blue cube and keep gripper at a height higher than 0.1m
+{
+  "objective": "ca.norm_2(x - (blue_cube + np.array([-0.06, 0, 0])))**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["0.035 - ca.norm_2(x - blue_cube)", "0.1 - x[2]"]
+}
+
+# Query: move gripper to the right of the orange cube and keep gripper at a height higher than 0.1m
+{
+  "objective": "ca.norm_2(x - (blue_cube + np.array([0, 0.06, 0])))**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["0.1 - x[2]"]
+}
+
+# Query: Move the gripper 0.1m upwards
+{
+  "objective": "ca.norm_2(x - (x0 + np.array([0, 0, 0.1])))**2",
+  "equality_constraints": [],
+  "inequality_constraints": []
+}
+
+# Query: move the gripper to object_1 and stay 0.04m away from object_2
+{
+  "objective": "ca.norm_2(x - object_1)**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["0.035 - ca.norm_2(x - object_1)", "0.04 - ca.norm_2(x - object_2)"]
+}
+
+# Query: Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m
+{
+  "objective": "ca.norm_2(x_left[0] - t)**2",
+  "equality_constraints": ["np.array([0.2, 0.2]) - x[1:]"],
+  "inequality_constraints": []
+}
+
 """
 
 """
@@ -309,30 +436,41 @@ Rules:
   - The objective and constraints can be a function of `x`, `blue_cube`, `blue_cube_psi`, ... and/or `t`. 
   - Use `t` in the inequalities especially when you need to describe motions of the gripper.
   - If you want to avoid colliding with a cube, the right safety margin is half of its side length.
-    
+
 
 Example 1:
 ~~~
 Task: 
-    "move gripper 0.03m behind the blue_cube and keep gripper at a height higher than 0.1m"
+    "move the gripper to [0.2, 0.05, 0.2] and avoid collisions with object_2"
 Output:
-    "objective": "ca.norm_2(x - (blue_cube + np.array([-0.03, 0, 0])))**2",
+    "objective": "ca.norm_2(x - np.array([0.2, 0.05, 0.2]))**2",
     "equality_constraints": [],
-    "inequality_constraints": ["0.1 - ca.norm_2(x[2])"]
+    "inequality_constraints": ["0.04 - ca.norm_2(x - object_2)"]
 ~~~
 Notice how the inequality constraint holds if <= 0.
 
 Example 2:
 ~~~
 Task: 
-    "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m"
-Output:  
-    "objective": "ca.norm_2(x_left[0] - t)**2",
-    "equality_constraints": ["np.array([0.2, 0.2]) - x[1:]"],
-    "inequality_constraints": []
+    "move the gripper to blue cube"
+Output:
+    "objective": "ca.norm_2(x - blue_cube)**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.03 - ca.norm_2(x - blue_cube)"]
 ~~~
 
 Example 3:
+~~~
+Task: 
+    "move gripper behind the blue cube and keep gripper at a height higher than 0.1m"
+Output:
+    "objective": "ca.norm_2(x - (blue_cube + np.array([-0.06, 0, 0])))**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.1 - x[2]"]
+~~~
+Notice how the inequality constraint holds if <= 0.
+
+Example 4:
 ~~~
 Task: 
     "Move the gripper 0.1m upwards"
@@ -342,8 +480,36 @@ Output:
     "inequality_constraints": []
 ~~~
 
-  {format_instructions}
-  """
+Example 5:
+~~~
+Task: 
+    "move the gripper to object_1 and avoid collisions with object_2"
+Output:
+    "objective": "ca.norm_2(x - object_1)**2",
+    "equality_constraints": [],
+    "inequality_constraints": ["0.03 - ca.norm_2(x - object_1)", "0.04 - ca.norm_2(x - object_2)"]
+~~~
+
+Example 6:
+~~~
+Task: 
+    "Move the gripper at constant speed along the x axis while keeping y and z fixed at 0.2m"
+Output:  
+    "objective": "ca.norm_2(x_left[0] - t)**2",
+    "equality_constraints": ["np.array([0.2, 0.2]) - x[1:]"],
+    "inequality_constraints": []
+~~~
+
+
+{format_instructions}
+"""
+
+"""
+  - If you want to avoid colliding with a cube, use the following numbers for the collision avoidance inequality constraints of the cubes:
+      - Cube you are going to grasp (specified in instruction): 0.035m
+      - Cube you just released (specified in instruction): 0.045m
+      - Any other cube: 0.045m
+"""
 
 NMPC_OBJECTIVE_DESIGNER_PROMPT_CUBES = """
 You are a helpful assistant in charge of designing the optimization problem for an MPC controller that is controlling a robot manipulator. 
@@ -706,11 +872,23 @@ Output:
 """
 
 
+PROMPTS = {
+    "TP_OL": {
+        "stack": TP_PROMPT_OL
+    },
+    "TP_CL": {
+        "stack": TP_PROMPT_CL
+    },
+    "OD": {
+        "stack": OD_PROMPT,
+    },
+}
+
 TP_PROMPTS = {
-  "stack": TP_PROMPT,
-  "pyramid": TP_PROMPT,
-  "L": TP_PROMPT,
-  "reverse": TP_PROMPT,
+  "stack": TP_PROMPT_CL,
+  "pyramid": TP_PROMPT_CL,
+  "L": TP_PROMPT_CL,
+  "reverse": TP_PROMPT_CL,
   "clean_plate": OPTIMIZATION_TASK_PLANNER_PROMPT_CLEAN_PLATE,
   "move_table": OPTIMIZATION_TASK_PLANNER_PROMPT_MOVE_TABLE,
   "sponge": OPTIMIZATION_TASK_PLANNER_PROMPT_SPONGE
