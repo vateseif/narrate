@@ -236,9 +236,9 @@ class Simulation(AbstractSimulation):
         self.doc.save(self.doc_path)
 
     def _start_cap(self, prompt):
-        self.robot.lmp(prompt, f'objects = {[el["name"] for el in self.env.objects_info]}')
+        out = self.robot.lmp(prompt, f'objects = {[el["name"] for el in self.env.objects_info]}')
         image_url = self._get_current_img()
-        return "CAP started", image_url
+        return out, image_url
 
     # async def http_plan_task(self, request):
     #     data = await request.json()

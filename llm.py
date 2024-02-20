@@ -8,6 +8,7 @@ import os
 import json
 import requests
 import tiktoken
+from copy import deepcopy
 from streamlit import empty, session_state
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -27,10 +28,18 @@ import shapely
 from shapely.geometry import *
 from shapely.affinity import *
 from prompts.prompts import prompt_tabletop_ui, prompt_parse_obj_name, prompt_parse_position, prompt_parse_question, prompt_transform_shape_pts, prompt_fgen
-model_name = "gpt-4"
-
+model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
 
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
+global_log = ""
+
+def append_to_global_log(message:str):
+  global global_log
+  global_log += message + "\n\n"
+
+def clear_global_log():
+  global global_log
+  global_log = ""
 
 class Message:
   def __init__(self, text, base64_image=None, role="user"):
@@ -110,7 +119,7 @@ class LLM(AbstractLLM):
 
 class LMP:
 
-    def __init__(self, name, cfg, lmp_fgen, fixed_vars, variable_vars):
+    def __init__(self, name, cfg, lmp_fgen, fixed_vars, variable_vars, main_lmp=False):
         self._name = name
         self._cfg = cfg
 
@@ -123,6 +132,7 @@ class LMP:
         self._fixed_vars = fixed_vars
         self._variable_vars = variable_vars
         self.exec_hist = ''
+        self.main_lmp = main_lmp
     
     def update_obs(self, obs):
         self._variable_vars['_update_obs'](obs)
@@ -154,6 +164,7 @@ class LMP:
 
         while True:
             try:
+                append_to_global_log(f"[LMP, Prompt] {prompt}")
                 code_str = request_oai(prompt, model_name=self._cfg["engine"])
                 # code_str = openai.Completion.create(
                 #     prompt=prompt,
@@ -162,6 +173,7 @@ class LMP:
                 #     engine=self._cfg['engine'],
                 #     max_tokens=self._cfg['max_tokens']
                 # )['choices'][0]['text'].strip()
+                append_to_global_log(f"[LMP, Response] {code_str}")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -192,8 +204,12 @@ class LMP:
         if self._cfg['maintain_session']:
             self._variable_vars.update(lvars)
 
-        if self._cfg['has_return']:
-            return lvars[self._cfg['return_val_name']]
+        # if self._cfg['has_return']:
+        #     return lvars[self._cfg['return_val_name']]
+        log = deepcopy(global_log)
+        if self.main_lmp:
+            clear_global_log()
+        return log
 
 
 class LMPFGen:
@@ -215,6 +231,7 @@ class LMPFGen:
         print(f"[LMPFGen] {prompt=}")
         while True:
             try:
+                append_to_global_log(f"[LMPFGen, Prompt] {prompt}")
                 f_src = request_oai(prompt, model_name=self._cfg["engine"])
                 # f_src = openai.Completion.create(
                 #     prompt=prompt, 
@@ -223,6 +240,7 @@ class LMPFGen:
                 #     engine=self._cfg['engine'],
                 #     max_tokens=self._cfg['max_tokens']
                 # )['choices'][0]['text'].strip()
+                append_to_global_log(f"[LMPFGen, Response] {f_src}")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -371,6 +389,7 @@ class LMP_wrapper():
 
     self.mpc = mpc
     self.gripper = 1.  # open
+    self.t = 0
 
   def _open_gripper(self):
     self.gripper = 0.
@@ -406,7 +425,6 @@ class LMP_wrapper():
 
   def get_obj_pos(self, obj_name):
     # return the xyz position of the object in robot base frame
-    print(f"self.env.objects_info: {self.env.objects_info}")
     return list(self.obs[obj_name]["position"])
 
   # def get_obj_position_np(self, obj_name):
@@ -500,7 +518,6 @@ class LMP_wrapper():
     print(f"Called put_first_on_second with {arg1=} and {arg2=}")
     place_pos = self.get_obj_pos(arg2) if isinstance(arg2, str) else arg2
     place_pos = list(np.array(place_pos) + np.array([0, 0, 0.04]))
-    self.t = 0
     self.move_obj_to_pos(arg1, place_pos)
     print(f"put_first_on_second done DONE")
 
@@ -716,12 +733,18 @@ def setup_LMP(env, cfg_tabletop, mpc):
 
   # creating the LMP that deals w/ high-level language commands
   lmp_tabletop_ui = LMP(
-      'tabletop_ui', cfg_tabletop['lmps']['tabletop_ui'], lmp_fgen, fixed_vars, variable_vars
+      'tabletop_ui', cfg_tabletop['lmps']['tabletop_ui'], lmp_fgen, fixed_vars, variable_vars, main_lmp=True
   )
 
   return lmp_tabletop_ui
 
 def request_oai(message, model_name, max_tokens=512):
+  if model_name == "davinci-002" or model_name == "gpt-3.5-turbo-instruct":
+    return request_oai_legacy(message, model_name, max_tokens)
+  else:
+    return request_oai_chat(message, model_name, max_tokens)
+
+def request_oai_chat(message, model_name, max_tokens=512):
     payload = {
       "model": model_name,
       "messages": [{"role": "user", "content": message}],
@@ -734,4 +757,19 @@ def request_oai(message, model_name, max_tokens=512):
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()
     print(f"{response=}")
     AI_response = response['choices'][0]['message']['content']
+    return AI_response
+
+def request_oai_legacy(message, model_name, max_tokens=512):
+    payload = {
+      "model": model_name,
+      "prompt": message,
+      "max_tokens": max_tokens,
+    }
+    headers = {
+      "Content-Type": "application/json",
+      "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
+    }
+    response = requests.post("https://api.openai.com/v1/completions", headers=headers, json=payload).json()
+    print(f"{response=}")
+    AI_response = response['choices'][0]['text']
     return AI_response

@@ -1,93 +1,52 @@
 prompt_tabletop_ui = '''
+# Rules:
+# 1. You MUST reply with executable code only. Every natural language comment will make the code invalid.
+# 2. The code you write SHOULD NOT be contained in a code block. Write raw code.
+# The following is a collection of examples.
+
 # Python 2D robot control script
 import numpy as np
 from env_utils import put_first_on_second, get_obj_pos, get_obj_names, say, get_corner_name, get_side_name, is_obj_visible, stack_objects_in_order
 from plan_utils import parse_obj_name, parse_position, parse_question, transform_shape_pts
 
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# the yellow block on the yellow bowl.
-say('Ok - putting the yellow block on the yellow bowl')
-put_first_on_second('yellow block', 'yellow bowl')
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# which block did you move.
-say('I moved the yellow block')
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# move the green block to the top right corner.
-say('Got it - putting the green block on the top right corner')
-corner_pos = parse_position('top right corner')
-put_first_on_second('green block', corner_pos)
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# stack the blue bowl on the yellow bowl on the green block.
-order_bottom_to_top = ['green block', 'yellow block', 'blue bowl']
-say(f'Sure - stacking from top to bottom: {", ".join(order_bottom_to_top)}')
-stack_objects_in_order(object_names=order_bottom_to_top)
-objects = ['cyan block', 'white block', 'cyan bowl', 'blue block', 'blue bowl', 'white bowl']
-# make a line of blocks on the right side.
-say('No problem! Making a line of blocks on the right side')
-block_names = parse_obj_name('the blocks', f'objects = {get_obj_names()}')
-line_pts = parse_position(f'a 30cm vertical line on the right with {len(block_names)} points')
-for block_name, pt in zip(block_names, line_pts):
-  put_first_on_second(block_name, pt)
-objects = ['yellow block', 'red block', 'yellow bowl', 'gray block', 'gray bowl', 'red bowl']
-# put the small banana colored thing in between the blue bowl and green block.
-say('Sure thing - putting the yellow block between the blue bowl and the green block')
-target_pos = parse_position('a point in the middle betweeen the blue bowl and the green block')
-put_first_on_second('yellow block', target_pos)
-objects = ['yellow block', 'red block', 'yellow bowl', 'gray block', 'gray bowl', 'red bowl']
-# stack the blocks on the right side with the gray one on the bottom.
-say('Ok. stacking the blocks on the right side with the gray block on the bottom')
-right_side = parse_position('the right side')
-put_first_on_second('gray block', right_side)
-order_bottom_to_top = ['gray block', 'green block', 'yellow block']
-stack_objects_in_order(object_names=order_bottom_to_top)
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# hide the blue bowl.
-bowl_name = np.random.choice(['yellow bowl', 'green bowl'])
-say(f'Sounds good! Hiding the blue bowl under the {bowl_name}')
-put_first_on_second(bowl_name, 'blue bowl')
-objects = ['pink block', 'green block', 'pink bowl', 'blue block', 'blue bowl', 'green bowl']
-# stack everything with the green block on top.
-say('Ok! Stacking everything with the green block on the top')
-order_bottom_to_top = ['blue bowl', 'pink bowl', 'green bowl', 'pink block', 'blue block', 'green block']
-stack_objects_in_order(object_names=order_bottom_to_top)
-objects = ['pink block', 'green block', 'pink bowl', 'blue block', 'blue bowl', 'green bowl']
-# move the grass-colored bowl to the left.
-say('Sure - moving the green bowl left by 10 centimeters')
-left_pos = parse_position('a point 10cm left of the green bowl')
-put_first_on_second('green bowl', left_pos)
-objects = ['pink block', 'green block', 'pink bowl', 'blue block', 'blue bowl', 'green bowl']
-# why did you move the red bowl.
-say(f'I did not move the red bowl')
-objects = ['pink block', 'green block', 'pink bowl', 'blue block', 'blue bowl', 'green bowl']
-# undo that.
-say('Sure - moving the green bowl right by 10 centimeters')
-left_pos = parse_position('a point 10cm right of the green bowl')
-put_first_on_second('green bowl', left_pos)
-objects = ['brown bowl', 'green block', 'brown block', 'green bowl', 'blue bowl', 'blue block']
-# move the brown bowl to the side closest to the green block.
-closest_side_position = parse_position('the side closest to the green block')
-say(f'Got it - putting the brown bowl on the {get_side_name(closest_side_position)}')
-put_first_on_second('brown bowl', closest_side_position)
-objects = ['brown bowl', 'green block', 'brown block', 'green bowl', 'blue bowl', 'blue block']
-# move the red bowl a lot to the left of the blocks.
-say('Sure! Moving the red bowl to a point left of the blocks')
-left_pos = parse_position('a point 20cm left of the blocks')
-put_first_on_second('red bowl', left_pos)
-objects = ['pink block', 'gray block', 'orange block']
-# imagine that the bowls are different biomes on earth and imagine that the blocks are parts of a building.
-say('ok')
-objects = ['yellow block', 'green block', 'yellow bowl', 'blue block', 'blue bowl', 'green bowl']
-# now build a tower in the grasslands.
-order_bottom_to_top = ['green bowl', 'blue block', 'green block', 'yellow block']
-say('stacking the blocks on the green bowl')
-stack_objects_in_order(object_names=order_bottom_to_top)
-objects = ['yellow block', 'green block', 'yellow bowl', 'gray block', 'gray bowl', 'green bowl']
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
+# put the four cubes in a straight line
+say('Ok - putting the cubes in a straight line')
+red_cube_pos = get_obj_pos('red_cube')
+blue_cube_target = get_pt_to_the_right(red_cube_pos)
+move_obj_to_pos('blue_cube', blue_cube_target)
+green_cube_target = get_pt_to_the_right(blue_cube_target)
+move_obj_to_pos('green_cube', green_cube_target)
+orange_cube_target = get_pt_to_the_right(green_cube_target)
+move_obj_to_pos('orange_cube', orange_cube_target)
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 
-# Note that behind is -0.05 on x, front is +0.05 on x, left is +0.05 on y, right is -0.05 on y
-say('ok')
+# put the four cubes in a vertical straight line
+say('Ok - putting the cubes in a vertical straight line, asusming the red cube is at the bottom')
+red_cube_pos = get_obj_pos('red_cube')
+blue_cube_target = get_pt_in_front(red_cube_pos)
+move_obj_to_pos('blue_cube', blue_cube_target)
+green_cube_target = get_pt_in_front(blue_cube_target)
+move_obj_to_pos('green_cube', green_cube_target)
+orange_cube_target = get_pt_in_front(green_cube_target)
+move_obj_to_pos('orange_cube', orange_cube_target)
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 
-# Note that all positions have 3 coordinates (x, y, z) in meters.
-say('ok')
+# put the yellow cube on top of the green cube
+say('Ok - putting the yellow cube on top of the green cube')
+put_first_on_second('yellow_cube', 'green_cube')
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
+
+# stack the blue cube on top of the orange cube
+say('Ok - stacking the blue cube on top of the orange cube')
+put_first_on_second('blue_cube', 'orange_cube')
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
+
+# put the yellow cube next to the green cube
+say('Ok - putting the yellow cube next to the green cube')
+yellow_cube_target = get_pt_to_the_right(get_obj_pos('green_cube'))
+move_obj_to_pos('yellow_cube', yellow_cube_target)
+objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 '''.strip()
 
 prompt_parse_obj_name = '''
@@ -270,6 +229,11 @@ new_shape_pts = translate_pts_np(shape_pts, mean_delta)
 '''.strip()
 
 prompt_fgen = '''
+# Rules:
+# 1. You MUST reply with executable code only. Every natural language comment will make the code invalid.
+# 2. The code you write SHOULD NOT be contained in a code block. Write raw code.
+# The following is a collection of examples.
+
 import numpy as np
 from shapely.geometry import *
 from shapely.affinity import *
@@ -286,16 +250,20 @@ def eval_line(x, slope, y_intercept):
     return x * slope + y_intercept
 
 # define function: pt = get_pt_to_the_left(pt, dist).
-def get_pt_to_the_left(pt, dist):
-    return pt + [-dist, 0]
+def get_pt_to_the_left(pt, dist=0.05):
+    return list(np.array(pt) + np.array([0, , 0]))
 
 # define function: pt = get_pt_to_the_top(pt, dist).
-def get_pt_to_the_top(pt, dist):
-    return pt + [0, dist]
+def get_pt_to_the_top(pt, dist=0.05):
+    return list(np.array(pt) + np.array([0, 0, dist]))
+
+# define function: pt = get_pt_behind(pt, dist).
+def get_pt_behind(pt, dist=0.05):
+    return list(np.array(pt) + np.array([-dist, 0, 0]))
 
 # define function line = make_line_by_length(length=x).
 def make_line_by_length(length):
-  line = LineString([[0, 0], [length, 0]])
+  line = LineString([[0, 0, 0], [length, 0, 0]])
   return line
 
 # define function: line = make_vertical_line_by_length(length=x).
