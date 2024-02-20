@@ -41,9 +41,8 @@ TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 global_log = ""
 global_log_chat = ""
 
-def append_to_global_log(message:str):
-  global global_log, global_log_chat
-  global_log += message + "\n\n"
+def append_to_chat_log(message:str):
+  global global_log_chat
   global_log_chat += message + "\n\n"
 
 def clear_global_log():
@@ -69,6 +68,7 @@ def store_epoch_db(episode_id, role, content, image_url):
   session.add(epoch)
   session.commit()
   session.close()
+  clear_global_log()
 
 class Message:
   def __init__(self, text, base64_image=None, role="user"):
@@ -197,7 +197,9 @@ class LMP:
 
         while True:
             try:
-                append_to_global_log(f"[LMP, Prompt] {prompt}")
+                log_msg = f"[LMP, Prompt] {prompt}"
+                append_to_chat_log(log_msg)
+                store_epoch_db(episode.id, "ai", log_msg, "")
                 code_str = request_oai(prompt, model_name=self._cfg["engine"])
                 # code_str = openai.Completion.create(
                 #     prompt=prompt,
@@ -206,7 +208,9 @@ class LMP:
                 #     engine=self._cfg['engine'],
                 #     max_tokens=self._cfg['max_tokens']
                 # )['choices'][0]['text'].strip()
-                append_to_global_log(f"[LMP, Response] {code_str}")
+                log_msg = f"[LMP, Response] {code_str}"
+                append_to_chat_log(log_msg)
+                store_epoch_db(episode.id, "ai", log_msg, "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -264,7 +268,9 @@ class LMPFGen:
         print(f"[LMPFGen] {prompt=}")
         while True:
             try:
-                append_to_global_log(f"[LMPFGen, Prompt] {prompt}")
+                log_msg = f"[LMPFGen, Prompt] {prompt}"
+                append_to_chat_log(log_msg)
+                store_epoch_db(episode.id, "ai", log_msg, "")
                 f_src = request_oai(prompt, model_name=self._cfg["engine"])
                 # f_src = openai.Completion.create(
                 #     prompt=prompt, 
@@ -273,7 +279,9 @@ class LMPFGen:
                 #     engine=self._cfg['engine'],
                 #     max_tokens=self._cfg['max_tokens']
                 # )['choices'][0]['text'].strip()
-                append_to_global_log(f"[LMPFGen, Response] {f_src}")
+                log_msg = f"[LMPFGen, Response] {f_src}"
+                append_to_chat_log(log_msg)
+                store_epoch_db(episode.id, "ai", log_msg, "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -531,10 +539,7 @@ class LMP_wrapper():
     
     image = self._retrieve_image()
     image_url = self._uplaod_image(image)
-    print(f"{episode=}")
-    print(f"{episode.id=}")
     store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
-    clear_global_log()
 
   def move_obj_to_pos(self, obj_name, target_pos):
       # move the object to the desired xyz position
@@ -834,8 +839,8 @@ def request_oai_chat(message, model_name, max_tokens=512):
       "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
     }
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()
-    print(f"{response=}")
     AI_response = response['choices'][0]['message']['content']
+    print(f"\33[92m {AI_response} \033[0m \n")
     return AI_response
 
 def request_oai_legacy(message, model_name, max_tokens=512):
@@ -849,6 +854,6 @@ def request_oai_legacy(message, model_name, max_tokens=512):
       "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
     }
     response = requests.post("https://api.openai.com/v1/completions", headers=headers, json=payload).json()
-    print(f"{response=}")
     AI_response = response['choices'][0]['text']
+    print(f"\33[92m {AI_response} \033[0m \n")
     return AI_response
