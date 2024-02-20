@@ -32,7 +32,7 @@ from shapely.geometry import *
 from shapely.affinity import *
 from prompts.prompts import prompt_tabletop_ui, prompt_parse_obj_name, prompt_parse_position, prompt_parse_question, prompt_transform_shape_pts, prompt_fgen
 from db import Session, Episode, Epoch
-from config.config import SimulationConfig
+from config.config import SimulationConfig, RobotConfig
 model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
 
 episode = None
@@ -419,6 +419,7 @@ class LMP_wrapper():
   def __init__(self, env, cfg, mpc, render=False):
     self._cfg = cfg
     self.cfg = SimulationConfig()
+    self.robot_cfg = RobotConfig()
     self.env = env
     self.object_names = list(self._cfg['env']['init_objs'])
     
@@ -434,11 +435,20 @@ class LMP_wrapper():
     self.t = 0
 
   def _open_gripper(self):
-    self.gripper = 0.
+    self.gripper = -0.01
     self.gripper_timer = 0
+    while self.gripper < 1.:
+      if self.gripper<0.9 and self.gripper_timer>self.robot_cfg.open_gripper_time: 
+        self.gripper = 1.
+      else:
+        self.gripper_timer += 1
+      self.obs, _, done, _ = self.env.step([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
+    
 
   def _close_gripper(self):
-    self.gripper = -1.
+    self.gripper = -0.02
+    for _ in range(15):
+      self.obs, _, done, _ = self.env.step([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
   
   def _update_obs(self, obs):
     self.obs = obs

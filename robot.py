@@ -26,15 +26,8 @@ class Robot(AbstractRobot):
       # self.MPC.init_states(observation, t, self.gripper==-1.)
       # self.lmp.init(observation, t, self.gripper==-1.)
 
-  def _open_gripper(self):
-    self.gripper = -0.01
-    self.gripper_timer = 0
-
-  def _close_gripper(self):
-    self.gripper = -0.02
-
   def reset(self):
-    pass
+    self.gripper = 1.
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
