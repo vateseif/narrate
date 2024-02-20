@@ -122,6 +122,9 @@ class LMP:
         self._fixed_vars = fixed_vars
         self._variable_vars = variable_vars
         self.exec_hist = ''
+    
+    def update_obs(self, obs):
+        self._variable_vars['_update_obs'](obs)
 
     def clear_exec_hist(self):
         self.exec_hist = ''
@@ -365,13 +368,12 @@ class LMP_wrapper():
     self._table_z = self._cfg['env']['coords']['table_z']
     self.render = render
   
-  def init_states(self, observation, t, gripper):
-    self.obs = observation
-    self.gripper = gripper
-    self.t = t
+  def _update_obs(self, obs):
+    self.obs = obs
+    print(f"[LMP_wrapper] Updated obs: {self.obs}")
 
-  def is_obj_visible(self, obj_name):
-    return obj_name in self.object_names
+  # def is_obj_visible(self, obj_name):
+  #   return obj_name in self.object_names
 
   def get_obj_names(self):
     return self.object_names[::]
@@ -379,11 +381,11 @@ class LMP_wrapper():
   def denormalize_xy(self, pos_normalized):
     return pos_normalized * self._range_xy + self._min_xy
 
-  def get_corner_positions(self):
-    unit_square = box(0, 0, 1, 1)
-    normalized_corners = np.array(list(unit_square.exterior.coords))[:4]
-    corners = np.array(([self.denormalize_xy(corner) for corner in normalized_corners]))
-    return corners
+  # def get_corner_positions(self):
+  #   unit_square = box(0, 0, 1, 1)
+  #   normalized_corners = np.array(list(unit_square.exterior.coords))[:4]
+  #   corners = np.array(([self.denormalize_xy(corner) for corner in normalized_corners]))
+  #   return corners
 
   def get_side_positions(self):
     side_xs = np.array([0, 0.5, 0.5, 1])
@@ -393,17 +395,18 @@ class LMP_wrapper():
     return side_positions
 
   def get_obj_pos(self, obj_name):
-    # return the xy position of the object in robot base frame
-    return self.env.get_obj_pos(obj_name)[:2]
+    # return the xyz position of the object in robot base frame
+    print(f"self.env.objects_info: {self.env.objects_info}")
+    return self.obs[obj_name]["position"]
 
-  def get_obj_position_np(self, obj_name):
-    return self.get_pos(obj_name)
+  # def get_obj_position_np(self, obj_name):
+  #   return self.get_pos(obj_name)
 
-  def get_bbox(self, obj_name):
-    # return the axis-aligned object bounding box in robot base frame (not in pixels)
-    # the format is (min_x, min_y, max_x, max_y)
-    bbox = self.env.get_bounding_box(obj_name)
-    return bbox
+  # def get_bbox(self, obj_name):
+  #   # return the axis-aligned object bounding box in robot base frame (not in pixels)
+  #   # the format is (min_x, min_y, max_x, max_y)
+  #   bbox = self.env.get_bounding_box(obj_name)
+  #   return bbox
 
   # def get_color(self, obj_name):
   #   for color, rgb in COLORS.items():
@@ -415,24 +418,36 @@ class LMP_wrapper():
     # target can either be another object name, or it can be an x-y position in robot base frame
     pick_pos = self.get_obj_pos(arg1) if isinstance(arg1, str) else arg1
     place_pos = self.get_obj_pos(arg2) if isinstance(arg2, str) else arg2
-    self.env.step(action={'pick': pick_pos, 'place': place_pos})
+    # TODO implement in env
+    self.env.step_pick_place(action={'pick': pick_pos, 'place': place_pos})
 
   def get_robot_pos(self):
-    # return robot end-effector xy position in robot base frame
-    return self.env.get_ee_pos()
+    # return robot end-effector xyz position in robot base frame
+    print(f"robot position: {self.obs['robot'][:3]}")
+    return self.obs['robot'][:3]
 
   def goto_pos(self, position_xy):
     # move the robot end-effector to the desired xy position while maintaining same z
-    ee_xyz = self.env.get_ee_pos()
+    ee_xyz = self.get_robot_pos()
     position_xyz = np.concatenate([position_xy, ee_xyz[-1]])
     while np.linalg.norm(position_xyz - ee_xyz) > 0.01:
+      # TODO implement in env
       self.env.movep(position_xyz)
-      self.env.step_sim_and_render()
-      ee_xyz = self.env.get_ee_pos()
+      # self.env.step_sim_and_render()
+      # ee_xyz = self.env.get_ee_pos()
 
   def follow_traj(self, traj):
+    # traj is a list of xy positions
     for pos in traj:
       self.goto_pos(pos)
+  
+  def open_gripper(self):
+    # TODO implement in env
+    self.env.open_gripper()
+  
+  def close_gripper(self):
+    # TODO implement in env
+    self.env.close_gripper()
 
   def get_corner_positions(self):
     normalized_corners = np.array([
@@ -462,20 +477,20 @@ class LMP_wrapper():
     side_idx = np.argmin(np.linalg.norm(side_positions - pos, axis=1))
     return ['top side', 'right side', 'bottom side', 'left side'][side_idx]
   
-class LMP_wrapper_mock:
-   def __init__(self, env, cfg) -> None:
-      pass
+# class LMP_wrapper_mock:
+#    def __init__(self, env, cfg) -> None:
+#       pass
    
-   def get_obj_pos(self, obj_name):
-      print("Called get_obj_pos")
-      return np.array([0, 0, 0])
+#    def get_obj_pos(self, obj_name):
+#       print("Called get_obj_pos")
+#       return np.array([0, 0, 0])
    
-   def get_obj_names(self,):
-      print("Called get_obj_names")
-      return ["red_cube", "green_cube"]
+#    def get_obj_names(self,):
+#       print("Called get_obj_names")
+#       return ["red_cube", "green_cube"]
    
-   def put_first_on_second(self, obj_a, obj_b):
-      print("Called put_first_on_second")
+#    def put_first_on_second(self, obj_a, obj_b):
+#       print("Called put_first_on_second")
       
 
 cfg_tabletop = {
@@ -585,8 +600,8 @@ def setup_LMP(env, cfg_tabletop):
   cfg_tabletop['env'] = dict()
   cfg_tabletop['env']['init_objs'] = list([obj['name'] for obj in env.objects_info])
   cfg_tabletop['env']['coords'] = lmp_tabletop_coords
-  # LMP_env = LMP_wrapper(env, cfg_tabletop)
-  LMP_env = LMP_wrapper_mock(env, cfg_tabletop)
+  LMP_env = LMP_wrapper(env, cfg_tabletop)
+  # LMP_env = LMP_wrapper_mock(env, cfg_tabletop)
 
   # creating APIs that the LMPs can interact with
   fixed_vars = {
@@ -599,7 +614,7 @@ def setup_LMP(env, cfg_tabletop):
   # variable_vars = {
   #     k: getattr(LMP_env, k)
   #     for k in [
-  #         'get_bbox', 'get_obj_pos', 'get_color', 'is_obj_visible', 'denormalize_xy',
+  #         'get_obj_pos', 'get_robot_pos', 'denormalize_xy',
   #         'put_first_on_second', 'get_obj_names',
   #         'get_corner_name', 'get_side_name',
   #     ]
@@ -607,7 +622,7 @@ def setup_LMP(env, cfg_tabletop):
   variable_vars = {
       k: getattr(LMP_env, k)
       for k in [
-          'get_obj_pos', 'get_obj_names', 'put_first_on_second'
+          'get_obj_pos', 'get_robot_pos', '_update_obs',
       ]
   }
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')

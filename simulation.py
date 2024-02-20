@@ -39,7 +39,7 @@ class Simulation(AbstractSimulation):
         # simulation time
         self.t = 0.
         env_info = (self.env.robots_info, self.env.objects_info)
-        self.robot = Robot(env_info,RobotConfig(self.cfg.task))
+        self.robot = Robot(self.env, RobotConfig(self.cfg.task))
         # count number of tasks solved from a plan 
         self.task_counter = 0
         # bool for stopping simulation
@@ -120,9 +120,8 @@ class Simulation(AbstractSimulation):
             image_path = f'images/runs/{self.video_name}.png'  # Specify your local file path here
             image.save(image_path, 'PNG')
             return image_path
-                
-    def _plan_task(self, user_message:str) -> str:
-        # retrieve current frame
+        
+    def _get_current_img(self):
         frame_np = np.array(self.env.render("rgb_array", 
                                             width=self.cfg.frame_width, height=self.cfg.frame_height,
                                             target_position=self.cfg.frame_target_position,
@@ -130,12 +129,11 @@ class Simulation(AbstractSimulation):
                                             yaw=self.cfg.frame_yaw,
                                             pitch=self.cfg.frame_pitch))
         frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
-        #frame_np = cv2.cvtColor(frame_np, cv2.COLOR_RGBA2BGR)
-        ## convert to base64
-        #_, buffer = cv2.imencode('.jpg', frame_np)
-        #frame = base64.b64encode(buffer).decode('utf-8')
-        # upload image to imgur
         image_url = self._uplaod_image(frame_np)
+        return image_url
+                
+    def _plan_task(self, user_message:str) -> str:
+        image_url = self._get_current_img()
         # create scene description
         scene_desctiption = self._create_scene_description()
         # run VLM
@@ -149,20 +147,20 @@ class Simulation(AbstractSimulation):
         self.prev_instruction = instruction["instruction"]
         return instruction, image_url
     
-    def _make_plan(self, user_message:str="") -> str:
-        self.plan:dict = self.robot.plan_task(user_message)
-        self.task_counter = 0
-        pretty_msg = "Tasks:\n"
-        pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
-        return pretty_msg
+    # def _make_plan(self, user_message:str="") -> str:
+    #     self.plan:dict = self.robot.plan_task(user_message)
+    #     self.task_counter = 0
+    #     pretty_msg = "Tasks:\n"
+    #     pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
+    #     return pretty_msg
     
-    def _solve_task(self, task:str):
-        AI_response = self.robot.solve_task(task)
-        if self.cfg.logging:
-            self._add_text_to_doc("OD: " + AI_response)
+    # def _solve_task(self, task:str):
+    #     AI_response = self.robot.solve_task(task)
+    #     if self.cfg.logging:
+    #         self._add_text_to_doc("OD: " + AI_response)
 
-        #self.prev_OD_response = AI_response
-        return AI_response
+    #     #self.prev_OD_response = AI_response
+    #     return AI_response
 
     def reset(self):
         # reset pand env
@@ -237,25 +235,37 @@ class Simulation(AbstractSimulation):
         
         self.doc.save(self.doc_path)
 
-    async def http_plan_task(self, request):
-        data = await request.json()
-        user_message = data.get('content')
-        instruction, image_url = self._plan_task(user_message)
-        optimization = self._solve_task(instruction["instruction"])
-        return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}, {"type": "OD", "content": optimization}])
+    def _start_cap(self, prompt):
+        self.robot.lmp(prompt, f'objects = {[el["name"] for el in self.env.objects_info]}')
+        image_url = self._get_current_img()
+        return "CAP started", image_url
 
-    async def http_solve_task(self, request):
-        data = await request.json()
-        user_task = data.get('content')
-        AI_response = self._solve_task(user_task)
-        return web.json_response([{"type": "OD", "content": AI_response}])
+    # async def http_plan_task(self, request):
+    #     data = await request.json()
+    #     user_message = data.get('content')
+    #     instruction, image_url = self._plan_task(user_message)
+    #     optimization = self._solve_task(instruction["instruction"])
+    #     return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}, {"type": "OD", "content": optimization}])
+
+    # async def http_solve_task(self, request):
+    #     data = await request.json()
+    #     user_task = data.get('content')
+    #     AI_response = self._solve_task(user_task)
+    #     return web.json_response([{"type": "OD", "content": AI_response}])
     
-    async def http_make_plan(self, request):
+    # async def http_make_plan(self, request):
+    #     data = await request.json()
+    #     user_message = data.get('content')
+    #     pretty_msg = self._make_plan(user_message)
+    #     return web.json_response([{"type": "TP", "content": pretty_msg}])
+    
+    async def http_cap(self, request):
         data = await request.json()
+        print(data)
         user_message = data.get('content')
-        pretty_msg = self._make_plan(user_message)
-        return web.json_response([{"type": "TP", "content": pretty_msg}])
-    
+        instruction, image_url = self._start_cap(user_message)
+        return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}])
+
     async def http_next_task(self, request):
         if self.task_counter < len(self.plan["tasks"]):
             AI_response = self._solve_task(self.plan["tasks"][self.task_counter])
@@ -298,14 +308,16 @@ class Simulation(AbstractSimulation):
     def run(self):
         app = web.Application()
         app.add_routes([
-            web.post('/plan_task', self.http_plan_task),
-            web.post('/make_plan', self.http_make_plan),
-            web.post('/solve_task', self.http_solve_task),
+            # web.post('/plan_task', self.http_plan_task),
+            # web.post('/make_plan', self.http_make_plan),
+            # web.post('/solve_task', self.http_solve_task),
+            web.post('/cap', self.http_cap),
             web.get('/next_task', self.http_next_task),
             web.get('/save_recording', self.http_save_recording),
             web.get('/start_recording', self.http_start_recording),
             web.get('/cancel_recording', self.http_cancel_recording)
         ])
+        # print server port
 
         asyncio.run(self.main(app))
   

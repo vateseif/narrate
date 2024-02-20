@@ -9,7 +9,7 @@ st.title("Language to Optimization")
 st.sidebar.title("Choose model")
 
 # Add a sidebar radio button to select the message type
-model = st.sidebar.radio("Select the model to talk to", ["Task Planner", "Optimization Designer"])
+model = st.sidebar.radio("Select the model to talk to", ["CAP", "Task Planner", "Optimization Designer"])
 
 # init the avatars for the message icons
 avatars = {"human":"images/seif_avatar.jpeg", "OD":"images/wall-e.png", "TP":"images/eve.png"}
@@ -66,18 +66,26 @@ if prompt := st.chat_input("What should the robot do?"):
 	# Display user message in chat message container
 	with st.chat_message("human", avatar=avatars["human"]):
 		st.markdown(prompt)
+	
+	print(f"Sending prompt to CAP: {prompt}")
+	response = requests.post(base_url+'cap', json={"content": prompt})
+	print(f"Received response from CAP: {response}")
+	response = response.json()
+	st.session_state.messages += response
+	for m in response: append_message(m)
+	# set_state(1)
 
 	# Display assistant response in chat message container
-	if model == "Task Planner":
-		response = requests.post(base_url+'make_plan', json={"content": prompt}).json()
-		st.session_state.messages += response
-		for m in response: append_message(m)
-		#st.session_state.task = response[-2]["content"]
-		set_state(1)
-	elif model == "Optimization Designer":
-		response = requests.post(base_url+'solve_task', json={"content": prompt}).json()
-		st.session_state.messages += response
-		for m in response: append_message(m)
+	# if model == "Task Planner":
+	# 	response = requests.post(base_url+'make_plan', json={"content": prompt}).json()
+	# 	st.session_state.messages += response
+	# 	for m in response: append_message(m)
+	# 	#st.session_state.task = response[-2]["content"]
+	# 	set_state(1)
+	# elif model == "Optimization Designer":
+	# 	response = requests.post(base_url+'solve_task', json={"content": prompt}).json()
+	# 	st.session_state.messages += response
+	# 	for m in response: append_message(m)
 
 if st.session_state.stage == 1:
 	st.button(f'Solve task', on_click=set_state, args=[2])
