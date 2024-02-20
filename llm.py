@@ -698,7 +698,8 @@ def setup_LMP(env, cfg_tabletop, mpc):
   variable_vars = {
       k: getattr(LMP_env, k)
       for k in [
-          'get_obj_pos', 'get_robot_pos', '_update_obs', 'put_first_on_second', 'move_obj_to_pos',
+          'get_obj_pos', 'get_robot_pos', '_update_obs', 'put_first_on_second', 'move_obj_to_pos', 'get_obj_names',
+          
       ]
   }
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')

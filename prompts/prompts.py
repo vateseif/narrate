@@ -83,8 +83,11 @@ say('stacking the blocks on the green bowl')
 stack_objects_in_order(object_names=order_bottom_to_top)
 objects = ['yellow block', 'green block', 'yellow bowl', 'gray block', 'gray bowl', 'green bowl']
 
-# Note that behind is -x, front is +x, left is +y, right is -y
-saz('ok')
+# Note that behind is -0.05 on x, front is +0.05 on x, left is +0.05 on y, right is -0.05 on y
+say('ok')
+
+# Note that all positions have 3 coordinates (x, y, z) in meters.
+say('ok')
 '''.strip()
 
 prompt_parse_obj_name = '''
