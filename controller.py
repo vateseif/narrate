@@ -125,7 +125,7 @@ class Controller(AbstractController):
 		# state objective
 		self.mpc.set_objective(mterm=mterm, lterm=lterm)
 		# input objective
-		u_kwargs = {f'u{r["name"]}':1. for r in self.robots_info} | {f'u_psi{r["name"]}':5e-5 for r in self.robots_info} 
+		u_kwargs = {f'u{r["name"]}':1. for r in self.robots_info} | {f'u_psi{r["name"]}':1e-4 for r in self.robots_info} 
 		self.mpc.set_rterm(**u_kwargs)
 
 	def set_constraints(self, nlp_constraints: Optional[List[ca.SX]] = None):
