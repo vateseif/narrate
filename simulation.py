@@ -145,30 +145,30 @@ class Simulation(AbstractSimulation):
         session.commit()
         session.close()
     
-    def _make_plan(self, user_message:str="") -> str:
-        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
-        instruction += f"# Query: {user_message}"
-        self.plan:dict = self.robot.plan_task(instruction)
-        self.task_counter = 0
-        pretty_msg = "Tasks:\n"
-        pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
-        if self.cfg.logging:
-            image = self._retrieve_image()
-            image_url = self._uplaod_image(image)
-            self._store_epoch_db(self.episode.id, "human", instruction, image_url)
-            self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
-        return pretty_msg
+    # def _make_plan(self, user_message:str="") -> str:
+    #     instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
+    #     instruction += f"# Query: {user_message}"
+    #     self.plan:dict = self.robot.plan_task(instruction)
+    #     self.task_counter = 0
+    #     pretty_msg = "Tasks:\n"
+    #     pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
+    #     if self.cfg.logging:
+    #         image = self._retrieve_image()
+    #         image_url = self._uplaod_image(image)
+    #         self._store_epoch_db(self.episode.id, "human", instruction, image_url)
+    #         self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
+    #     return pretty_msg
     
-    def _solve_task(self, task:str):
-        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
-        instruction += f"# Query: {task}"
-        AI_response = self.robot.solve_task(instruction)
-        if self.cfg.logging and AI_response is not None:
-            image = self._retrieve_image()
-            image_url = self._uplaod_image(image)
-            self._store_epoch_db(self.episode.id, "OD", AI_response, image_url)
+    # def _solve_task(self, task:str):
+    #     instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
+    #     instruction += f"# Query: {task}"
+    #     AI_response = self.robot.solve_task(instruction)
+    #     if self.cfg.logging and AI_response is not None:
+    #         image = self._retrieve_image()
+    #         image_url = self._uplaod_image(image)
+    #         self._store_epoch_db(self.episode.id, "OD", AI_response, image_url)
 
-        return AI_response
+    #     return AI_response
 
     def reset(self):
         # reset pand env
@@ -249,28 +249,14 @@ class Simulation(AbstractSimulation):
         return web.json_response({"content": "Simulation reset"})
     
     def _start_cap(self, prompt):
-        out = self.robot.lmp(prompt, f'objects = {[el["name"] for el in self.env.objects_info]}')
-        image_url = self._get_current_img()
+        image = self._retrieve_image()
+        image_url = self._uplaod_image(image)
+        self._store_epoch_db(self.episode.id, "human", prompt, image_url)
+        out = self.robot.lmp(prompt, self.episode, f'objects = {[el["name"] for el in self.env.objects_info]}')
+        
+        image = self._retrieve_image()
+        image_url = self._uplaod_image(image)
         return out, image_url
-
-    # async def http_plan_task(self, request):
-    #     data = await request.json()
-    #     user_message = data.get('content')
-    #     instruction, image_url = self._plan_task(user_message)
-    #     optimization = self._solve_task(instruction["instruction"])
-    #     return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}, {"type": "OD", "content": optimization}])
-
-    # async def http_solve_task(self, request):
-    #     data = await request.json()
-    #     user_task = data.get('content')
-    #     AI_response = self._solve_task(user_task)
-    #     return web.json_response([{"type": "OD", "content": AI_response}])
-    
-    # async def http_make_plan(self, request):
-    #     data = await request.json()
-    #     user_message = data.get('content')
-    #     pretty_msg = self._make_plan(user_message)
-    #     return web.json_response([{"type": "TP", "content": pretty_msg}])
     
     async def http_cap(self, request):
         data = await request.json()
@@ -322,8 +308,6 @@ class Simulation(AbstractSimulation):
     def run(self):
         app = web.Application()
         app.add_routes([
-            web.post('/make_plan', self.http_make_plan),
-            web.post('/solve_task', self.http_solve_task),
             web.get('/reset', self.http_reset),
             web.post('/cap', self.http_cap),
             web.get('/next_task', self.http_next_task),

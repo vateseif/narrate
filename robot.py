@@ -18,8 +18,6 @@ class Robot(AbstractRobot):
     robots_info, objects_info = env_info
     mpc = Controller(env_info)
     self.lmp = setup_LMP(env, cfg_tabletop, mpc)
-    # self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
-    # self.OD = LLM(LLMConfig("OD", self.cfg.task))
     
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
@@ -36,13 +34,7 @@ class Robot(AbstractRobot):
     self.gripper = -0.02
 
   def reset(self):
-    # open grfipper
-    self.gripper = 1.
-    # reset llms
-    self.TP.reset()
-    self.OD.reset()
-    # reset mpc
-    self.MPC.reset()
+    pass
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """

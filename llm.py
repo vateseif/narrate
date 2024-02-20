@@ -5,10 +5,13 @@ from mocks.mocks import nmpcMockOptions
 
 import time
 import os
+import io
 import json
 import requests
 import tiktoken
+from PIL import Image
 from copy import deepcopy
+from datetime import datetime
 from streamlit import empty, session_state
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -28,18 +31,44 @@ import shapely
 from shapely.geometry import *
 from shapely.affinity import *
 from prompts.prompts import prompt_tabletop_ui, prompt_parse_obj_name, prompt_parse_position, prompt_parse_question, prompt_transform_shape_pts, prompt_fgen
+from db import Session, Episode, Epoch
+from config.config import SimulationConfig
 model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
+
+episode = None
 
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 global_log = ""
+global_log_chat = ""
 
 def append_to_global_log(message:str):
-  global global_log
+  global global_log, global_log_chat
   global_log += message + "\n\n"
+  global_log_chat += message + "\n\n"
 
 def clear_global_log():
   global global_log
   global_log = ""
+
+def clear_global_log_chat():
+  global global_log_chat
+  global_log_chat = ""
+
+def store_epoch_db(episode_id, role, content, image_url):
+  session = Session()
+  
+  # Find the last epoch number for this episode
+  last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
+  if last_epoch is None:
+      next_time_step = 1  # This is the first epoch for the episode
+  else:
+      next_time_step = last_epoch.time_step + 1
+  
+  # Create and insert the new epoch
+  epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
+  session.add(epoch)
+  session.commit()
+  session.close()
 
 class Message:
   def __init__(self, text, base64_image=None, role="user"):
@@ -159,7 +188,10 @@ class LMP:
 
         return prompt, use_query
 
-    def __call__(self, query, context='', **kwargs):
+    def __call__(self, query, episode_local, context='', **kwargs):
+        global episode
+        episode = episode_local
+
         prompt, use_query = self.build_prompt(query, context=context)
         print(f"[LMP] {prompt=}")
 
@@ -207,9 +239,9 @@ class LMP:
 
         # if self._cfg['has_return']:
         #     return lvars[self._cfg['return_val_name']]
-        log = deepcopy(global_log)
+        log = deepcopy(global_log_chat)
         if self.main_lmp:
-            clear_global_log()
+            clear_global_log_chat()
         return log
 
 
@@ -378,6 +410,7 @@ class LMP_wrapper():
 
   def __init__(self, env, cfg, mpc, render=False):
     self._cfg = cfg
+    self.cfg = SimulationConfig()
     self.env = env
     self.object_names = list(self._cfg['env']['init_objs'])
     
@@ -391,6 +424,7 @@ class LMP_wrapper():
     self.mpc = mpc
     self.gripper = 1.  # open
     self.t = 0
+    self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
 
   def _open_gripper(self):
     self.gripper = 0.
@@ -442,7 +476,44 @@ class LMP_wrapper():
   #     if color in obj_name:
   #       return rgb
 
+  def _uplaod_image(self, rgba_image:np.ndarray) -> str:
+    # Convert the NumPy array to a PIL Image object
+    image = Image.fromarray(rgba_image, 'RGBA')
+    # Convert the PIL Image object to a byte stream
+    byte_stream = io.BytesIO()
+    image.save(byte_stream, format='PNG')  # You can change PNG to JPEG if preferred
+    byte_stream.seek(0)  # Seek to the start of the stream
+    # Imgur API details
+    client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
+    headers = {'Authorization': f'Client-ID {client_id}'}
+
+    # Prepare the data for the request
+    data = {'image': byte_stream.read()}
+
+    # Make the POST request to upload the image
+    response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
+
+    if response.status_code == 200:
+        # Return the image link
+        return response.json()['data']['link']
+    else:
+        image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
+        image.save(image_path, 'PNG')
+        return image_path
+      
+  def _retrieve_image(self) -> np.ndarray:
+    frame_np = np.array(self.env.render("rgb_array", 
+                                        width=self.cfg.frame_width, height=self.cfg.frame_height,
+                                        target_position=self.cfg.frame_target_position,
+                                        distance=self.cfg.frame_distance,
+                                        yaw=self.cfg.frame_yaw,
+                                        pitch=self.cfg.frame_pitch))
+    frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
+
+    return frame_np
+
   def run_mpc(self, optimization):
+    global episode
     STEP_TIME = 5.0
     self.mpc.init_states(self.obs, self.t, False)
     self.mpc.setup_controller(optimization)
@@ -457,6 +528,13 @@ class LMP_wrapper():
       trajectory = self.mpc.retrieve_trajectory()
       self.env.visualize_trajectory(trajectory)
       self.obs, _, done, _ = self.env.step(action)
+    
+    image = self._retrieve_image()
+    image_url = self._uplaod_image(image)
+    print(f"{episode=}")
+    print(f"{episode.id=}")
+    store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
+    clear_global_log()
 
   def move_obj_to_pos(self, obj_name, target_pos):
       # move the object to the desired xyz position
