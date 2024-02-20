@@ -432,7 +432,6 @@ class LMP_wrapper():
     self.mpc = mpc
     self.gripper = 1.  # open
     self.t = 0
-    self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
 
   def _open_gripper(self):
     self.gripper = 0.
@@ -505,7 +504,7 @@ class LMP_wrapper():
         # Return the image link
         return response.json()['data']['link']
     else:
-        image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
+        image_path = f'data/images/{self.cfg.task}_{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
         image.save(image_path, 'PNG')
         return image_path
       
