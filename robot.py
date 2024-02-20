@@ -14,11 +14,11 @@ class Robot(AbstractRobot):
     env_info = (env.robots_info, env.objects_info)
     print(f"env_info: {env_info}")
     robots_info, objects_info = env_info
-    self.lmp = setup_LMP(env, cfg_tabletop)
+    mpc = Controller(env_info)
+    self.lmp = setup_LMP(env, cfg_tabletop, mpc)
     # self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
     # self.OD = LLM(LLMConfig("OD", self.cfg.task))
     
-    # self.MPC = Controller(env_info)
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
       """ Update simulation time and current state of MPC controller"""

@@ -3,6 +3,7 @@ from typing import List, Optional
 from core import AbstractLLM, AbstractLLMConfig
 from mocks.mocks import nmpcMockOptions
 
+import time
 import os
 import json
 import requests
@@ -356,7 +357,7 @@ def exec_safe(code_str, gvars=None, lvars=None):
 class LMP_wrapper():
   """Where all the primitives are defined. This is the interface between the LMPs and the environment."""
 
-  def __init__(self, env, cfg, render=False):
+  def __init__(self, env, cfg, mpc, render=False):
     self._cfg = cfg
     self.env = env
     self.object_names = list(self._cfg['env']['init_objs'])
@@ -367,10 +368,19 @@ class LMP_wrapper():
 
     self._table_z = self._cfg['env']['coords']['table_z']
     self.render = render
+
+    self.mpc = mpc
+    self.gripper = 1.  # open
+
+  def _open_gripper(self):
+    self.gripper = 0.
+    self.gripper_timer = 0
+
+  def _close_gripper(self):
+    self.gripper = -1.
   
   def _update_obs(self, obs):
     self.obs = obs
-    print(f"[LMP_wrapper] Updated obs: {self.obs}")
 
   # def is_obj_visible(self, obj_name):
   #   return obj_name in self.object_names
@@ -397,7 +407,7 @@ class LMP_wrapper():
   def get_obj_pos(self, obj_name):
     # return the xyz position of the object in robot base frame
     print(f"self.env.objects_info: {self.env.objects_info}")
-    return self.obs[obj_name]["position"]
+    return list(self.obs[obj_name]["position"])
 
   # def get_obj_position_np(self, obj_name):
   #   return self.get_pos(obj_name)
@@ -413,13 +423,87 @@ class LMP_wrapper():
   #     if color in obj_name:
   #       return rgb
 
+  def run_mpc(self, optimization):
+    STEP_TIME = 5.0
+    self.mpc.init_states(self.obs, self.t, False)
+    self.mpc.setup_controller(optimization)
+    s = time.time()
+    while time.time() - s < STEP_TIME:
+      self.mpc.init_states(self.obs, self.t, False)
+      action = []
+      control: List[np.ndarray] = self.mpc.step()
+      for u in control:
+        action.append(np.hstack((u, self.gripper)))
+      
+      trajectory = self.mpc.retrieve_trajectory()
+      self.env.visualize_trajectory(trajectory)
+      self.obs, _, done, _ = self.env.step(action)
+
+  def move_obj_to_pos(self, obj_name, target_pos):
+      # move the object to the desired xyz position
+      pick_pos = self.get_obj_pos(obj_name) if isinstance(obj_name, str) else obj_name
+      place_pos = list(np.array(target_pos))
+      self._open_gripper()
+
+      above_pick_pos = list(np.array(pick_pos) + np.array([0, 0, 0.1]))
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({above_pick_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({pick_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
+      self._close_gripper()
+
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({above_pick_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
+
+      above_place_pos = list(np.array(place_pos) + np.array([0, 0, 0.1]))
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({above_place_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({place_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
+      self._open_gripper()
+
+      above_place_pos = list(np.array(place_pos) + np.array([0, 0, 0.1]))
+      optimization = {
+        "objective": f"ca.norm_2(x - np.array({above_place_pos}))**2",
+        "equality_constraints":[],
+        "inequality_constraints":[]
+      }
+      self.run_mpc(optimization)
+
   def put_first_on_second(self, arg1, arg2):
     # put the object with obj_name on top of target
-    # target can either be another object name, or it can be an x-y position in robot base frame
-    pick_pos = self.get_obj_pos(arg1) if isinstance(arg1, str) else arg1
+    print(f"Called put_first_on_second with {arg1=} and {arg2=}")
     place_pos = self.get_obj_pos(arg2) if isinstance(arg2, str) else arg2
-    # TODO implement in env
-    self.env.step_pick_place(action={'pick': pick_pos, 'place': place_pos})
+    place_pos = list(np.array(place_pos) + np.array([0, 0, 0.04]))
+    self.t = 0
+    self.move_obj_to_pos(arg1, place_pos)
+    print(f"put_first_on_second done DONE")
+
 
   def get_robot_pos(self):
     # return robot end-effector xyz position in robot base frame
@@ -441,14 +525,6 @@ class LMP_wrapper():
     for pos in traj:
       self.goto_pos(pos)
   
-  def open_gripper(self):
-    # TODO implement in env
-    self.env.open_gripper()
-  
-  def close_gripper(self):
-    # TODO implement in env
-    self.env.close_gripper()
-
   def get_corner_positions(self):
     normalized_corners = np.array([
         [0, 1],
@@ -594,13 +670,13 @@ lmp_tabletop_coords = {
       }
 
 
-def setup_LMP(env, cfg_tabletop):
+def setup_LMP(env, cfg_tabletop, mpc):
   # LMP env wrapper
   cfg_tabletop = copy.deepcopy(cfg_tabletop)
   cfg_tabletop['env'] = dict()
   cfg_tabletop['env']['init_objs'] = list([obj['name'] for obj in env.objects_info])
   cfg_tabletop['env']['coords'] = lmp_tabletop_coords
-  LMP_env = LMP_wrapper(env, cfg_tabletop)
+  LMP_env = LMP_wrapper(env, cfg_tabletop, mpc)
   # LMP_env = LMP_wrapper_mock(env, cfg_tabletop)
 
   # creating APIs that the LMPs can interact with
@@ -622,7 +698,7 @@ def setup_LMP(env, cfg_tabletop):
   variable_vars = {
       k: getattr(LMP_env, k)
       for k in [
-          'get_obj_pos', 'get_robot_pos', '_update_obs',
+          'get_obj_pos', 'get_robot_pos', '_update_obs', 'put_first_on_second', 'move_obj_to_pos',
       ]
   }
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')
