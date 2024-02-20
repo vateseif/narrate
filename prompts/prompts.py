@@ -40,7 +40,8 @@ Rules:
   (1) You MUST ALWAYS specificy which collisions the gripper has to avoid in your instructions.
   (2) Never assume there are designated positions in the scene. Always specify the position of the gripper in the simplest way.
   (3) Be specific and concise in your instruction and don't provide reasonings. Keep your instructions short, straight and to the point.
-  (4) Use these common sense rules for spatial reasoning:
+  (4) NEVER avoid collisions with an object you are gripping.
+  (5) Use these common sense rules for spatial reasoning:
     (a) 'in front of' and 'behind' for positive and negative x-axis directions.
     (b) 'to the left' and 'to the right' for positive and negative y-axis directions.
     (c) 'above' and 'below' for positive and negative z-axis directions.
@@ -74,7 +75,7 @@ objects = ['apple', 'drawer handle', 'drawer']
 objects = ['plate', 'fork', 'knife', 'glass]
 # Query: Order the kitchen objects flat on the table in the x-y plane.
 {
-  "tasks": ["move gripper to the fork and avoid collisions with plate, knife, glass", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with plate, knife, glass", "open_gripper()", "move gripper to the glass and avoid collisions with fork, plate, knife", "close_gripper()", "move gripper in front of the plate avoiding collisions with fork plate knife", "open_gripper()", "move gripper to the knife and avoid collisions with fork, plate, glass", "close_gripper()", "move gripper to the right side of the plate avoiding collisions with fork, plate, glass", "open_gripper()"]
+  "tasks": ["move gripper to the fork and avoid collisions with plate, knife, glass", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with plate, knife, glass", "open_gripper()", "move gripper to the glass and avoid collisions with fork, plate, knife", "close_gripper()", "move gripper in front of the plate avoiding collisions with fork, plate and knife", "open_gripper()", "move gripper to the knife and avoid collisions with fork, plate, glass", "close_gripper()", "move gripper to the right side of the plate avoiding collisions with fork, plate and glass", "open_gripper()"]
 }
 
 """
@@ -105,9 +106,8 @@ Rules:
     (a)  If you want to write "ca.norm_2(x) = 1" write it as  "1 - ca.norm_2(x)" instead.
   (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
     (a)  If you want to write "ca.norm_2(x) >= 1" write it as  "1 - ca.norm_2(x)" instead. 
-  (3) You MUST avoid colliding with an object if you're moving the gripper to that object, even if not specified in the query.
-    (a) Also, avoid collision with an object if I instruct you to move the gripper to a position close (i.e. above or to the right) to that object.
-    (b) For the other objects in the scene (the objects you are not moving to or nearby), NEVER avoid collisions with them if not specified in the query.
+  (3) You MUST avoid colliding with an object IFF you're moving the gripper specifically to that object or nearby it (i.e. above the object), even if not specified in the query.
+  (4) NEVER avoid collisions with an object you're not moving to or nearby if not specified in the query.
   (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
 You must format your response into a json. Here are a few examples:
@@ -128,7 +128,7 @@ objects = ['red_cube', 'yellow_cube']
   "equality_constraints": [],
   "inequality_constraints": ["red_cube.size*0.85 - ca.norm_2(x - red_cube.position)", "yellow_cube.size - ca.norm_2(x - yellow_cube.position)"]
 }
-Notice the collision avoidance constraint with the red_cube despite not being specified in the query.
+Notice the collision avoidance constraint with the red_cube despite not being specified in the query because the gripper has to go to the red cube.
 
 objects = ['coffee_pod', 'coffee_machine']
 # Query: move gripper above the coffe pod and keep gripper at a height higher than 0.1m
@@ -137,7 +137,7 @@ objects = ['coffee_pod', 'coffee_machine']
   "equality_constraints": [],
   "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "0.1 - x[2]"]
 }
-Notice that there's no collision avoidance constraint with the coffee_machine because not in the query and because gripper is not moving to or nearby it.
+Notice that there's no collision avoidance constraint with the coffee_machine because it is not in the query and because gripper is not moving to or nearby it.
 
 objects = ['mug']
 # Query: Move the gripper 0.1m upwards
@@ -164,11 +164,11 @@ objects = ['joystick', 'remote']
 }
 
 objects = ['fork', 'spoon', 'plate']
-# Query: Move the gripper behind fork and avoid collisions with spoon and plate
+# Query: Move the gripper behind fork and avoid collisions with spoon
 {
   "objective": "ca.norm_2(x - (fork.position + np.array([-fork.size, 0, 0])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["fork.size*0.85 - ca.norm_2(x - fork.position)", "spoon.size - ca.norm_2(x - spoon.position)", "plate.size - ca.norm_2(x - plate.position)"]
+  "inequality_constraints": ["fork.size*0.85 - ca.norm_2(x - fork.position)", "spoon.size - ca.norm_2(x - spoon.position)"]
 }
 """
 

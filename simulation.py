@@ -265,8 +265,6 @@ class Simulation(AbstractSimulation):
             if AI_response is not None: self.task_counter += 1
             return web.json_response([{"type": "OD", "content": AI_response}])
         else:
-            self.session.close()
-            self.session = None
             return web.json_response([{"type": "OD", "content": "finished"}])
     
     async def http_save_recording(self, request):

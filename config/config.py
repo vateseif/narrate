@@ -5,8 +5,8 @@ from typing import List
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
-  debug: bool = True
-  logging: bool = True
+  debug: bool = False
+  logging: bool = False
   task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
