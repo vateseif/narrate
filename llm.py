@@ -72,7 +72,7 @@ class LLM(AbstractLLM):
     # add user message to chat history
     self.messages.append(Message(text=user_message, role="user", base64_image=base64_image))
     # select the last 2 user messages and the last assistant message
-    selected_messages = [self.messages[0]] + [m for m in self.messages[-2:] if m.role!="system"] if short_history else self.messages
+    selected_messages = [self.messages[0]] + [m for m in self.messages[-1:] if m.role!="system"] if short_history else self.messages
     # send request to OpenAI API
     payload = {
       "model": self.cfg.model_name,

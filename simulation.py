@@ -214,7 +214,6 @@ class Simulation(AbstractSimulation):
         # close environment
         #self.thread.join()
         self.stop_thread = True
-        self.thread.join()
         # init list of RGB frames if wanna save video
         if self.save_video:
             self._save_video()
@@ -222,7 +221,7 @@ class Simulation(AbstractSimulation):
         if self.cfg.logging:
             self.session.close()
         # exit
-        sys.exit()  
+        #sys.exit()  
 
     def _save_video(self):
         # Define the parameters
@@ -305,6 +304,7 @@ class Simulation(AbstractSimulation):
         app.add_routes([
             web.post('/make_plan', self.http_make_plan),
             web.post('/solve_task', self.http_solve_task),
+            web.get('/close', self.http_close),
             web.get('/reset', self.http_reset),
             web.get('/next_task', self.http_next_task),
             web.get('/save_recording', self.http_save_recording),

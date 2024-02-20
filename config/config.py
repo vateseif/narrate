@@ -62,7 +62,7 @@ class RobotConfig(AbstractRobotConfig):
   open_gripper_time: int = 15
   wait_s: float = 30. # wait time after a new MPC formualtion is applied
   COST_THRESHOLD: float = 3e-5
-  COST_DIIFF_THRESHOLD: float = 9e-7
+  COST_DIIFF_THRESHOLD: float = 5e-7
   TIME_THRESHOLD: float = 40
 
 

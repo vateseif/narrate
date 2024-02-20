@@ -84,7 +84,7 @@ class Robot(AbstractRobot):
 		# catch if reply cannot be parsed. i.e. when askin the LLM a question
 		try:
 			# design optimization functions
-			optimization = self.OD.run(plan)
+			optimization = self.OD.run(plan, short_history=True)
 			# apply optimization functions to MPC
 			self.MPC.setup_controller(optimization)
 			return self.pretty_print(optimization)

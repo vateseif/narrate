@@ -132,8 +132,8 @@ class Controller(AbstractController):
 		for r in self.robots_info:
 			# base constraints (state)
 			self.mpc.bounds['lower','_x', f'x{r["name"]}'] = np.array([-3., -3., 0.0]) # stay above table
-			#self.mpc.bounds['upper','_x', f'psi{r["name"]}'] = np.pi/2 * np.ones((1, 1))   # rotation upper bound
-			#self.mpc.bounds['lower','_x', f'psi{r["name"]}'] = -np.pi/2 * np.ones((1, 1))  # rotation lower bound
+			self.mpc.bounds['upper','_x', f'psi{r["name"]}'] = np.pi * 0.55 * np.ones((1, 1))   # rotation upper bound
+			self.mpc.bounds['lower','_x', f'psi{r["name"]}'] = -np.pi * 0.55 * np.ones((1, 1))  # rotation lower bound
 
 			# base constraints (input)
 			self.mpc.bounds['upper','_u', f'u{r["name"]}'] = self.cfg.hu * np.ones((self.cfg.nu, 1))  # input upper bound
