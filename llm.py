@@ -58,14 +58,15 @@ class LLM(AbstractLLM):
     super().__init__(cfg)
 
     # init messages
-    self.messages = []
-    # load prompt
-    self.messages.append(Message(text=self.cfg.prompt, role="system"))
+    self.messages = [Message(text=self.cfg.prompt, role="system")]
     # request headers
     self.headers = {
       "Content-Type": "application/json",
       "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"
     }
+
+  def reset(self):
+    self.messages = [Message(text=self.cfg.prompt, role="system")]
 
   def run(self, user_message:str, base64_image=None, short_history=False) -> str:
     # add user message to chat history

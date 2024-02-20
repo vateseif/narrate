@@ -9,8 +9,9 @@ import asyncio
 import requests
 import panda_gym
 import numpy as np
-from tqdm import tqdm
 from PIL import Image
+from tqdm import tqdm
+from time import sleep
 from aiohttp import web
 from datetime import datetime
 
@@ -172,6 +173,8 @@ class Simulation(AbstractSimulation):
     def reset(self):
         # reset pand env
         self.observation = self.env.reset()
+        # reset robot
+        self.robot.reset()
         # reset controller
         self.robot.init_states(self.observation, self.t)
         # count number of tasks solved from a plan 
@@ -237,6 +240,14 @@ class Simulation(AbstractSimulation):
         # Release the VideoWriter
         out.release()
 
+    async def http_close(self, request):
+        self.close()
+        return web.json_response({"content": "Simulation closed"})
+
+    async def http_reset(self, request):
+        self.reset()
+        return web.json_response({"content": "Simulation reset"})
+
     async def http_solve_task(self, request):
         data = await request.json()
         user_task = data.get('content')
@@ -282,7 +293,6 @@ class Simulation(AbstractSimulation):
         await self._run()
 
     async def _run(self):
-        self.reset()
         while not self.stop_thread:
             done = self.step()
             await asyncio.sleep(0.05)
@@ -295,6 +305,7 @@ class Simulation(AbstractSimulation):
         app.add_routes([
             web.post('/make_plan', self.http_make_plan),
             web.post('/solve_task', self.http_solve_task),
+            web.get('/reset', self.http_reset),
             web.get('/next_task', self.http_next_task),
             web.get('/save_recording', self.http_save_recording),
             web.get('/start_recording', self.http_start_recording),
@@ -306,4 +317,5 @@ class Simulation(AbstractSimulation):
 
 if __name__=="__main__":
     s = Simulation()
+    s.reset()
     s.run()

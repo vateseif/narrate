@@ -118,7 +118,7 @@ class Controller(AbstractController):
 		for i, r in enumerate(self.robots_info):
 			#regularization += ca.norm_2(self.x[i] - (np.array([0,0,0.2])))**2
 			regularization += .4 * ca.norm_2(self.dx[i])**2
-			regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
+			#regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
 		mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
 		lterm = 0.4*mterm
 		# state objective
@@ -223,12 +223,12 @@ class Controller(AbstractController):
 			gripper_offset = self.gripper_offsets
 		return gripper_offset
 
-	def reset(self, observation: Dict[str, np.ndarray], t:float = 0) -> None:
+	def reset(self) -> None:
 		"""
 			observation: robot observation from simulation containing position, angle and velocities 
 		"""
 		# TODO
-		self.init_states(observation, t)
+		self.setup_controller()
 		return
 
 	def _eval(self, code_str: str, offset=(np.zeros(3), 0.)):
