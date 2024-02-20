@@ -38,7 +38,7 @@ class Simulation(AbstractSimulation):
         # simulation time
         self.t = 0.
         env_info = (self.env.robots_info, self.env.objects_info)
-        self.robot = Robot(env_info,RobotConfig(self.cfg.task))
+        self.robot = Robot(self.env, RobotConfig(self.cfg.task))
         # count number of tasks solved from a plan 
         self.task_counter = 0
         # bool for stopping simulation
@@ -247,19 +247,38 @@ class Simulation(AbstractSimulation):
     async def http_reset(self, request):
         self.reset()
         return web.json_response({"content": "Simulation reset"})
+    
+    def _start_cap(self, prompt):
+        out = self.robot.lmp(prompt, f'objects = {[el["name"] for el in self.env.objects_info]}')
+        image_url = self._get_current_img()
+        return out, image_url
 
-    async def http_solve_task(self, request):
-        data = await request.json()
-        user_task = data.get('content')
-        AI_response = self._solve_task(user_task)
-        return web.json_response([{"type": "OD", "content": AI_response}])
+    # async def http_plan_task(self, request):
+    #     data = await request.json()
+    #     user_message = data.get('content')
+    #     instruction, image_url = self._plan_task(user_message)
+    #     optimization = self._solve_task(instruction["instruction"])
+    #     return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}, {"type": "OD", "content": optimization}])
+
+    # async def http_solve_task(self, request):
+    #     data = await request.json()
+    #     user_task = data.get('content')
+    #     AI_response = self._solve_task(user_task)
+    #     return web.json_response([{"type": "OD", "content": AI_response}])
     
-    async def http_make_plan(self, request):
+    # async def http_make_plan(self, request):
+    #     data = await request.json()
+    #     user_message = data.get('content')
+    #     pretty_msg = self._make_plan(user_message)
+    #     return web.json_response([{"type": "TP", "content": pretty_msg}])
+    
+    async def http_cap(self, request):
         data = await request.json()
+        print(data)
         user_message = data.get('content')
-        pretty_msg = self._make_plan(user_message)
-        return web.json_response([{"type": "TP", "content": pretty_msg}])
-    
+        instruction, image_url = self._start_cap(user_message)
+        return web.json_response([{"type": "image", "content": image_url}, {"type": "TP", "content": instruction}])
+
     async def http_next_task(self, request):
         if self.task_counter < len(self.plan["tasks"]):
             AI_response = self._solve_task(self.plan["tasks"][self.task_counter])
@@ -306,11 +325,13 @@ class Simulation(AbstractSimulation):
             web.post('/make_plan', self.http_make_plan),
             web.post('/solve_task', self.http_solve_task),
             web.get('/reset', self.http_reset),
+            web.post('/cap', self.http_cap),
             web.get('/next_task', self.http_next_task),
             web.get('/save_recording', self.http_save_recording),
             web.get('/start_recording', self.http_start_recording),
             web.get('/cancel_recording', self.http_cancel_recording)
         ])
+        # print server port
 
         asyncio.run(self.main(app))
   
