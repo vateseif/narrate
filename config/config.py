@@ -6,13 +6,13 @@ from typing import List
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = False
-  logging: bool = False
+  logging: bool = True
   task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
-  frame_width: int = 512
-  frame_height: int = 512
+  frame_width: int = 1024
+  frame_height: int = 1024
   frame_target_position: List[float] = [0.2, 0., 0.]
   frame_distance: float = 1.3
   frame_yaw: int = 90
@@ -64,6 +64,7 @@ class RobotConfig(AbstractRobotConfig):
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 5e-7
   TIME_THRESHOLD: float = 40
+  MAX_OD_ATTEMPTS: int = 2
 
 
 class DBConfig:

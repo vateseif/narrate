@@ -117,15 +117,15 @@ class Controller(AbstractController):
 		regularization = 0
 		for i, r in enumerate(self.robots_info):
 			#regularization += ca.norm_2(self.x[i] - (np.array([0,0,0.2])))**2
-			regularization += .4 * ca.norm_2(self.dx[i])**2
-			regularization += .001 * ca.norm_2(ca.sin(self.psi[i]) * ca.cos(self.psi[i]))**2
+			regularization += .1 * ca.norm_2(self.dx[i])**2
+			regularization += .0002 * ca.norm_2(ca.sin(self.psi[i]) * ca.cos(self.psi[i]))**2
 			#regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
 		mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
-		lterm = mterm
+		lterm = 2*mterm
 		# state objective
 		self.mpc.set_objective(mterm=mterm, lterm=lterm)
 		# input objective
-		u_kwargs = {f'u{r["name"]}':1. for r in self.robots_info} | {f'u_psi{r["name"]}':1e-4 for r in self.robots_info} 
+		u_kwargs = {f'u{r["name"]}':0.5 for r in self.robots_info} | {f'u_psi{r["name"]}':1e-5 for r in self.robots_info} 
 		self.mpc.set_rterm(**u_kwargs)
 
 	def set_constraints(self, nlp_constraints: Optional[List[ca.SX]] = None):
