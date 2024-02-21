@@ -33,20 +33,20 @@ class Robot(AbstractRobot):
     """ Runs the Task Planner by passing the user message and the current frame """
     return self.TP.run(user_message, base64_image, short_history=True)
 
-  def step(self):
-    action = [np.array([0., 0., 0., 0., 0., 0., self.gripper])]
-    # action = []
-    # control: List[np.ndarray] = self.MPC.step()
-    # for u in control:
-    #   action.append(np.hstack((u, self.gripper)))  
+  # def step(self):
+  #   action = [np.array([0., 0., 0., 0., 0., 0., self.gripper])]
+  #   # action = []
+  #   # control: List[np.ndarray] = self.MPC.step()
+  #   # for u in control:
+  #   #   action.append(np.hstack((u, self.gripper)))  
     
-    # Logic for opening and closing gripper
-    if self.gripper==0 and self.gripper_timer>self.cfg.open_gripper_time: 
-      self.gripper = 1.
-    else:
-      self.gripper_timer += 1
+  #   # Logic for opening and closing gripper
+  #   if self.gripper==0 and self.gripper_timer>self.cfg.open_gripper_time: 
+  #     self.gripper = 1.
+  #   else:
+  #     self.gripper_timer += 1
 
-    return action
+  #   return action
 
   def retrieve_trajectory(self):
     # return self.MPC.retrieve_trajectory()

@@ -196,19 +196,19 @@ class Simulation(AbstractSimulation):
         # update controller (i.e. set the current gripper position)
         self.robot.init_states(self.observation, self.t)
         # compute action
-        action = self.robot.step() # TODO: this is a list because the env may have multiple robots
+        # action = self.robot.step() # TODO: this is a list because the env may have multiple robots
         if self.cfg.debug:
             trajectory = self.robot.retrieve_trajectory()
             self.env.visualize_trajectory(trajectory)
         # apply action
-        self.observation, _, done, _ = self.env.step(action)
+        # self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video
         if self.save_video:
             frame = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
             frame = frame.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
             self.frames_list.append(frame)
 
-        return done
+        # return done
 
     def close(self):
         # close environment
