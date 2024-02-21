@@ -2,6 +2,7 @@ from prompts.prompts import PROMPTS, OD_PROMPTS
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from typing import List
 
+TASK_NAME = "stacking"  # [stacking, pyramid, letter_l]
 
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
@@ -67,6 +68,6 @@ class RobotConfig(AbstractRobotConfig):
 
 
 class DBConfig:
-  db_name: str = "data/DBs/stack_cubes.db"
+  db_name: str = f"data/DBs/{TASK_NAME}.db"
 
 

@@ -32,7 +32,7 @@ from shapely.geometry import *
 from shapely.affinity import *
 from prompts.prompts import prompt_tabletop_ui, prompt_parse_obj_name, prompt_parse_position, prompt_parse_question, prompt_transform_shape_pts, prompt_fgen
 from db import Session, Episode, Epoch
-from config.config import SimulationConfig, RobotConfig
+from config.config import SimulationConfig, RobotConfig, TASK_NAME
 model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
 
 episode = None
@@ -519,7 +519,7 @@ class LMP_wrapper():
     #     return response.json()['data']['link']
     # else:
     
-    image_path = f'data/images/{self.cfg.task}_{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
+    image_path = f'data/images/cap/{TASK_NAME}/{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
     image.save(image_path, 'PNG')
     return image_path
       
