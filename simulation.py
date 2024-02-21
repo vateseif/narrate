@@ -44,7 +44,7 @@ class Simulation(AbstractSimulation):
         # bool for stopping simulation
         self.stop_thread = False
         # whether to save frame (initialized to false)
-        self.save_video = False
+        self.save_video = self.cfg.save_video
         # init list of RGB frames if wanna save video
         self.frames_list = []
         self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
@@ -163,6 +163,8 @@ class Simulation(AbstractSimulation):
         self.optimizations = [] 
         self.task_counter = 0
         # init list of RGB frames if wanna save video
+        if self.save_video:
+            self._save_video()
         self.frames_list = []
         if self.cfg.logging:
             if self.session is not None:
@@ -187,8 +189,8 @@ class Simulation(AbstractSimulation):
         self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video
         if self.save_video:
-            frame = np.array(self.env.render("rgb_array", width=self.cfg.width, height=self.cfg.height))
-            frame = frame.reshape(self.cfg.width, self.cfg.height, 4).astype(np.uint8)
+            frame = np.array(self.env.render("rgb_array", width=self.cfg.frame_width, height=self.cfg.frame_height))
+            frame = frame.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
             self.frames_list.append(frame)
 
         return done
@@ -210,7 +212,7 @@ class Simulation(AbstractSimulation):
         # Define the parameters
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         # Create a VideoWriter object
-        out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (self.cfg.width, self.cfg.height))
+        out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (self.cfg.frame_width, self.cfg.frame_height))
         # Write frames to the video
         for frame in tqdm(self.frames_list):
             # Ensure the frame is in the correct format (RGBA)
@@ -252,8 +254,17 @@ class Simulation(AbstractSimulation):
         
     async def http_upload_plan(self, request):
         data = await request.json()
+        query = data['query']
+        plan = data['plan']
         self.task_counter = 0
-        self.plan = data.get('content')
+        self.plan = plan
+        pretty_msg = "Tasks:\n"
+        pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
+        if self.cfg.logging:
+            image = self._retrieve_image()
+            image_url = self._uplaod_image(image)
+            self._store_epoch_db(self.episode.id, "human", query, image_url)
+            self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
         return web.json_response({"response": "Plan uploaded"})
     
     async def http_upload_optimizations(self, request):
