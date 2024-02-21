@@ -100,23 +100,23 @@ class Simulation(AbstractSimulation):
         byte_stream = io.BytesIO()
         image.save(byte_stream, format='PNG')  # You can change PNG to JPEG if preferred
         byte_stream.seek(0)  # Seek to the start of the stream
-        # Imgur API details
-        client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
-        headers = {'Authorization': f'Client-ID {client_id}'}
+        # # Imgur API details
+        # client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
+        # headers = {'Authorization': f'Client-ID {client_id}'}
 
-        # Prepare the data for the request
-        data = {'image': byte_stream.read()}
+        # # Prepare the data for the request
+        # data = {'image': byte_stream.read()}
 
-        # Make the POST request to upload the image
-        response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
+        # # Make the POST request to upload the image
+        # response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
 
-        if response.status_code == 200:
-            # Return the image link
-            return response.json()['data']['link']
-        else:
-            image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
-            image.save(image_path, 'PNG')
-            return image_path
+        # if response.status_code == 200:
+        #     # Return the image link
+        #     return response.json()['data']['link']
+        # else:
+        image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
+        image.save(image_path, 'PNG')
+        return image_path
         
     def _retrieve_image(self) -> np.ndarray:
         frame_np = np.array(self.env.render("rgb_array", 
@@ -249,9 +249,9 @@ class Simulation(AbstractSimulation):
         return web.json_response({"content": "Simulation reset"})
     
     def _start_cap(self, prompt):
-        image = self._retrieve_image()
-        image_url = self._uplaod_image(image)
-        self._store_epoch_db(self.episode.id, "human", prompt, image_url)
+        self._store_epoch_db(self.episode.id, "human", prompt, "")
+        print(f"PROMPT: {prompt}")
+        print(f"CONTEXT: {[el['name'] for el in self.env.objects_info]}")
         out = self.robot.lmp(prompt, self.episode, f'objects = {[el["name"] for el in self.env.objects_info]}')
         
         image = self._retrieve_image()

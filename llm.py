@@ -170,6 +170,9 @@ class LMP:
     def clear_exec_hist(self):
         self.exec_hist = ''
 
+    def reset(self):
+        self.clear_exec_hist()
+
     def build_prompt(self, query, context=''):
         if len(self._variable_vars) > 0:
             variable_vars_imports_str = f"from utils import {', '.join(self._variable_vars.keys())}"
@@ -493,30 +496,32 @@ class LMP_wrapper():
   #     if color in obj_name:
   #       return rgb
 
-  def _uplaod_image(self, rgba_image:np.ndarray) -> str:
+  def _upload_image(self, rgba_image:np.ndarray) -> str:
     # Convert the NumPy array to a PIL Image object
     image = Image.fromarray(rgba_image, 'RGBA')
     # Convert the PIL Image object to a byte stream
     byte_stream = io.BytesIO()
     image.save(byte_stream, format='PNG')  # You can change PNG to JPEG if preferred
     byte_stream.seek(0)  # Seek to the start of the stream
-    # Imgur API details
-    client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
-    headers = {'Authorization': f'Client-ID {client_id}'}
 
-    # Prepare the data for the request
-    data = {'image': byte_stream.read()}
+    # # Imgur API details
+    # client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
+    # headers = {'Authorization': f'Client-ID {client_id}'}
 
-    # Make the POST request to upload the image
-    response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
+    # # Prepare the data for the request
+    # data = {'image': byte_stream.read()}
 
-    if response.status_code == 200:
-        # Return the image link
-        return response.json()['data']['link']
-    else:
-        image_path = f'data/images/{self.cfg.task}_{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
-        image.save(image_path, 'PNG')
-        return image_path
+    # # Make the POST request to upload the image
+    # response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
+
+    # if response.status_code == 200:
+    #     # Return the image link
+    #     return response.json()['data']['link']
+    # else:
+    
+    image_path = f'data/images/{self.cfg.task}_{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
+    image.save(image_path, 'PNG')
+    return image_path
       
   def _retrieve_image(self) -> np.ndarray:
     frame_np = np.array(self.env.render("rgb_array", 
@@ -547,7 +552,7 @@ class LMP_wrapper():
       self.obs, _, done, _ = self.env.step(action)
     
     image = self._retrieve_image()
-    image_url = self._uplaod_image(image)
+    image_url = self._upload_image(image)
     store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
 
   def move_obj_to_pos(self, obj_name, target_pos):
@@ -813,7 +818,6 @@ def setup_LMP(env, cfg_tabletop, mpc):
       ]
   }
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')
-  print(f"variable_vars: {variable_vars}")
 
   # creating the function-generating LMP
   lmp_fgen = LMPFGen(cfg_tabletop['lmps']['fgen'], fixed_vars, variable_vars)

@@ -46,7 +46,6 @@ objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 say('Ok - putting the yellow cube next to the green cube')
 yellow_cube_target = get_pt_to_the_right(get_obj_pos('green_cube'))
 move_obj_to_pos('yellow_cube', yellow_cube_target)
-objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 '''.strip()
 
 prompt_parse_obj_name = '''

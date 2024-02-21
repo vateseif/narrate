@@ -14,7 +14,6 @@ class Robot(AbstractRobot):
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
     env_info = (env.robots_info, env.objects_info)
-    print(f"env_info: {env_info}")
     robots_info, objects_info = env_info
     mpc = Controller(env_info)
     self.lmp = setup_LMP(env, cfg_tabletop, mpc)
@@ -28,6 +27,7 @@ class Robot(AbstractRobot):
 
   def reset(self):
     self.gripper = 1.
+    self.lmp.reset()
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
