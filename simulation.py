@@ -11,7 +11,6 @@ import panda_gym
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from time import sleep
 from aiohttp import web
 from datetime import datetime
 
@@ -32,6 +31,7 @@ class Simulation(AbstractSimulation):
         # init robots
         # count number of tasks solved from a plan 
         self.plan = None
+        self.optimizations = []
         self.task_counter = 0
         self.prev_instruction = "None"
 
@@ -52,10 +52,14 @@ class Simulation(AbstractSimulation):
         # init log file
         if self.cfg.logging:
             self.session = Session()
+            n_episodes = len(os.listdir("data/images"))
+            self.episode_folder = f"data/images/{n_episodes}"
+            os.mkdir(self.episode_folder)
 
     def _round_list(self, l, n=2):
         """ round list and if the result is -0.0 convert it to 0.0 """
         return [r if (r:=round(x, n)) != -0.0 else 0.0 for x in l]
+    
     
     def _create_scene_description(self):
         """ Look at the observation and create a string that describes the scene to be passed to the task planner """
@@ -96,27 +100,9 @@ class Simulation(AbstractSimulation):
     def _uplaod_image(self, rgba_image:np.ndarray) -> str:
         # Convert the NumPy array to a PIL Image object
         image = Image.fromarray(rgba_image, 'RGBA')
-        # Convert the PIL Image object to a byte stream
-        byte_stream = io.BytesIO()
-        image.save(byte_stream, format='PNG')  # You can change PNG to JPEG if preferred
-        byte_stream.seek(0)  # Seek to the start of the stream
-        # Imgur API details
-        client_id = 'c978542bde3df32'  # Replace with your Imgur Client ID
-        headers = {'Authorization': f'Client-ID {client_id}'}
-
-        # Prepare the data for the request
-        data = {'image': byte_stream.read()}
-
-        # Make the POST request to upload the image
-        response = requests.post('https://api.imgur.com/3/upload', headers=headers, files=data)
-
-        if response.status_code == 200:
-            # Return the image link
-            return response.json()['data']['link']
-        else:
-            image_path = f'data/images/{self.video_name}.png'  # Specify your local file path here
-            image.save(image_path, 'PNG')
-            return image_path
+        image_path = f"{self.episode_folder}/{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}.png"  # Specify your local file path here
+        image.save(image_path, 'PNG')
+        return image_path
         
     def _retrieve_image(self) -> np.ndarray:
         frame_np = np.array(self.env.render("rgb_array", 
@@ -146,28 +132,23 @@ class Simulation(AbstractSimulation):
         session.close()
     
     def _make_plan(self, user_message:str="") -> str:
-        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
-        instruction += f"# Query: {user_message}"
-        self.plan:dict = self.robot.plan_task(instruction)
+        self.plan:dict = self.robot.plan_task(user_message)
         self.task_counter = 0
         pretty_msg = "Tasks:\n"
         pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
         if self.cfg.logging:
             image = self._retrieve_image()
             image_url = self._uplaod_image(image)
-            self._store_epoch_db(self.episode.id, "human", instruction, image_url)
+            self._store_epoch_db(self.episode.id, "human", self.robot._get_instruction(user_message), image_url)
             self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
         return pretty_msg
     
-    def _solve_task(self, task:str):
-        instruction = f"objects = {[o['name'] for o in self.env.objects_info]}\n"
-        instruction += f"# Query: {task}"
-        AI_response = self.robot.solve_task(instruction)
+    def _solve_task(self, task:str, optimization:dict=None) -> str:
+        AI_response = self.robot.solve_task(task, optimization) if task != "finished" else task
         if self.cfg.logging and AI_response is not None:
             image = self._retrieve_image()
             image_url = self._uplaod_image(image)
             self._store_epoch_db(self.episode.id, "OD", AI_response, image_url)
-
         return AI_response
 
     def reset(self):
@@ -177,7 +158,9 @@ class Simulation(AbstractSimulation):
         self.robot.reset()
         # reset controller
         self.robot.init_states(self.observation, self.t)
-        # count number of tasks solved from a plan 
+        # reset task counter
+        self.plan = None
+        self.optimizations = [] 
         self.task_counter = 0
         # init list of RGB frames if wanna save video
         self.frames_list = []
@@ -260,12 +243,24 @@ class Simulation(AbstractSimulation):
         return web.json_response([{"type": "TP", "content": pretty_msg}])
     
     async def http_next_task(self, request):
-        if self.task_counter < len(self.plan["tasks"]):
-            AI_response = self._solve_task(self.plan["tasks"][self.task_counter])
-            if AI_response is not None: self.task_counter += 1
-            return web.json_response([{"type": "OD", "content": AI_response}])
-        else:
-            return web.json_response([{"type": "OD", "content": "finished"}])
+        is_plan_unfinished = self.task_counter < len(self.plan["tasks"])
+        task = self.plan["tasks"][self.task_counter] if is_plan_unfinished else "finished"
+        optimization = self.optimizations[self.task_counter] if (self.optimizations and is_plan_unfinished)  else None
+        AI_response = self._solve_task(task, optimization)
+        if AI_response is not None: self.task_counter += 1
+        return web.json_response([{"type": "OD", "content": AI_response}])
+        
+    async def http_upload_plan(self, request):
+        data = await request.json()
+        self.task_counter = 0
+        self.plan = data.get('content')
+        return web.json_response({"response": "Plan uploaded"})
+    
+    async def http_upload_optimizations(self, request):
+        data = await request.json()
+        self.task_counter = 0
+        self.optimizations = data.get('content')
+        return web.json_response({"response": "Optimizations uploaded"})
     
     async def http_save_recording(self, request):
         self.save_video = False
@@ -302,6 +297,8 @@ class Simulation(AbstractSimulation):
         app.add_routes([
             web.post('/make_plan', self.http_make_plan),
             web.post('/solve_task', self.http_solve_task),
+            web.post('/upload_plan', self.http_upload_plan),
+            web.post('/upload_optimizations', self.http_upload_optimizations),
             web.get('/close', self.http_close),
             web.get('/reset', self.http_reset),
             web.get('/next_task', self.http_next_task),

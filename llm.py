@@ -68,7 +68,7 @@ class LLM(AbstractLLM):
   def reset(self):
     self.messages = [Message(text=self.cfg.prompt, role="system")]
 
-  def run(self, user_message:str, base64_image=None, short_history=False) -> str:
+  def run(self, user_message:str, base64_image=None, short_history=False) -> dict:
     # add user message to chat history
     self.messages.append(Message(text=user_message, role="user", base64_image=base64_image))
     # select the last 2 user messages and the last assistant message
@@ -86,7 +86,6 @@ class LLM(AbstractLLM):
     try:
       AI_response = response['choices'][0]['message']['content']
       self.messages.append(Message(text=AI_response, role="assistant"))
-      print(f"\33[92m {AI_response} \033[0m \n")
       AI_response = json.loads(AI_response)
     except Exception as e:
       print(f"Error: {e}")
