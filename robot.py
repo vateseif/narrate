@@ -9,14 +9,14 @@ from config.config import RobotConfig, LLMConfig
 
 
 class Robot(AbstractRobot):
-  def __init__(self, env:Tuple[List], cfg=RobotConfig()) -> None:
+  def __init__(self, env:Tuple[List], db_sessionmaker, task_name, cfg=RobotConfig()) -> None:
     self.cfg = cfg
     self.gripper = 1. # 1 means the gripper is open
     self.gripper_timer = 0
     env_info = (env.robots_info, env.objects_info)
     robots_info, objects_info = env_info
     mpc = Controller(env_info)
-    self.lmp = setup_LMP(env, cfg_tabletop, mpc)
+    self.lmp = setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name)
     
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):

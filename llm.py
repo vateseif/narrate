@@ -31,8 +31,8 @@ import shapely
 from shapely.geometry import *
 from shapely.affinity import *
 from prompts.prompts import prompt_tabletop_ui, prompt_parse_obj_name, prompt_parse_position, prompt_parse_question, prompt_transform_shape_pts, prompt_fgen
-from db import Session, Episode, Epoch
-from config.config import SimulationConfig, RobotConfig, TASK_NAME
+from db import Episode, Epoch
+from config.config import SimulationConfig, RobotConfig
 model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
 
 episode = None
@@ -52,23 +52,6 @@ def clear_global_log():
 def clear_global_log_chat():
   global global_log_chat
   global_log_chat = ""
-
-def store_epoch_db(episode_id, role, content, image_url):
-  session = Session()
-  
-  # Find the last epoch number for this episode
-  last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
-  if last_epoch is None:
-      next_time_step = 1  # This is the first epoch for the episode
-  else:
-      next_time_step = last_epoch.time_step + 1
-  
-  # Create and insert the new epoch
-  epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
-  session.add(epoch)
-  session.commit()
-  session.close()
-  clear_global_log()
 
 class Message:
   def __init__(self, text, base64_image=None, role="user"):
@@ -149,7 +132,7 @@ class LLM(AbstractLLM):
 
 class LMP:
 
-    def __init__(self, name, cfg, lmp_fgen, fixed_vars, variable_vars, main_lmp=False):
+    def __init__(self, name, cfg, lmp_fgen, fixed_vars, variable_vars, db_sessionmaker, main_lmp=False):
         self._name = name
         self._cfg = cfg
 
@@ -163,6 +146,25 @@ class LMP:
         self._variable_vars = variable_vars
         self.exec_hist = ''
         self.main_lmp = main_lmp
+
+        self.sessionmaker = db_sessionmaker
+    
+    def store_epoch_db(self, episode_id, role, content, image_url):
+      session = self.sessionmaker()
+      
+      # Find the last epoch number for this episode
+      last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
+      if last_epoch is None:
+          next_time_step = 1  # This is the first epoch for the episode
+      else:
+          next_time_step = last_epoch.time_step + 1
+      
+      # Create and insert the new epoch
+      epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
+      session.add(epoch)
+      session.commit()
+      session.close()
+      clear_global_log()
     
     def update_obs(self, obs):
         self._variable_vars['_update_obs'](obs)
@@ -202,7 +204,7 @@ class LMP:
             try:
                 log_msg = f"[LMP, Prompt] {prompt}"
                 append_to_chat_log(log_msg)
-                store_epoch_db(episode.id, "ai", log_msg, "")
+                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 code_str = request_oai(prompt, model_name=self._cfg["engine"])
                 # code_str = openai.Completion.create(
                 #     prompt=prompt,
@@ -213,7 +215,7 @@ class LMP:
                 # )['choices'][0]['text'].strip()
                 log_msg = f"[LMP, Response] {code_str}"
                 append_to_chat_log(log_msg)
-                store_epoch_db(episode.id, "ai", log_msg, "")
+                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -254,7 +256,7 @@ class LMP:
 
 class LMPFGen:
 
-    def __init__(self, cfg, fixed_vars, variable_vars):
+    def __init__(self, cfg, fixed_vars, variable_vars, sessionmaker):
         self._cfg = cfg
 
         self._stop_tokens = list(self._cfg['stop'])
@@ -262,6 +264,25 @@ class LMPFGen:
         self._variable_vars = variable_vars
 
         self._base_prompt = self._cfg['prompt_text']
+
+        self.sessionmaker = sessionmaker
+    
+    def store_epoch_db(self, episode_id, role, content, image_url):
+        session = self.sessionmaker()
+        
+        # Find the last epoch number for this episode
+        last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
+        if last_epoch is None:
+            next_time_step = 1  # This is the first epoch for the episode
+        else:
+            next_time_step = last_epoch.time_step + 1
+        
+        # Create and insert the new epoch
+        epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
+        session.add(epoch)
+        session.commit()
+        session.close()
+        clear_global_log()
 
     def create_f_from_sig(self, f_name, f_sig, other_vars=None, fix_bugs=False, return_src=False):
         print(f'Creating function: {f_sig}')
@@ -273,7 +294,7 @@ class LMPFGen:
             try:
                 log_msg = f"[LMPFGen, Prompt] {prompt}"
                 append_to_chat_log(log_msg)
-                store_epoch_db(episode.id, "ai", log_msg, "")
+                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 f_src = request_oai(prompt, model_name=self._cfg["engine"])
                 # f_src = openai.Completion.create(
                 #     prompt=prompt, 
@@ -284,7 +305,7 @@ class LMPFGen:
                 # )['choices'][0]['text'].strip()
                 log_msg = f"[LMPFGen, Response] {f_src}"
                 append_to_chat_log(log_msg)
-                store_epoch_db(episode.id, "ai", log_msg, "")
+                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -419,7 +440,7 @@ def exec_safe(code_str, gvars=None, lvars=None):
 class LMP_wrapper():
   """Where all the primitives are defined. This is the interface between the LMPs and the environment."""
 
-  def __init__(self, env, cfg, mpc, render=False):
+  def __init__(self, env, cfg, mpc, sessionmaker, task_name, render=False):
     self._cfg = cfg
     self.cfg = SimulationConfig()
     self.robot_cfg = RobotConfig()
@@ -436,6 +457,26 @@ class LMP_wrapper():
     self.mpc = mpc
     self.gripper = 1.  # open
     self.t = 0
+
+    self.sessionmaker = sessionmaker
+    self.task_name = task_name
+
+  def store_epoch_db(self, episode_id, role, content, image_url):
+    session = self.sessionmaker()
+    
+    # Find the last epoch number for this episode
+    last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
+    if last_epoch is None:
+        next_time_step = 1  # This is the first epoch for the episode
+    else:
+        next_time_step = last_epoch.time_step + 1
+    
+    # Create and insert the new epoch
+    epoch = Epoch(episode_id=episode_id, time_step=next_time_step, role=role, content=content, image=image_url)
+    session.add(epoch)
+    session.commit()
+    session.close()
+    clear_global_log()
 
   def _open_gripper(self):
     self.gripper = -0.01
@@ -519,7 +560,7 @@ class LMP_wrapper():
     #     return response.json()['data']['link']
     # else:
     
-    image_path = f'data/images/cap/{TASK_NAME}/{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
+    image_path = f'data/images/cap/{self.task_name}/{episode.id}_{datetime.now().strftime("%d-%m-%Y_%H:%M:%S")}.png'
     image.save(image_path, 'PNG')
     return image_path
       
@@ -553,7 +594,7 @@ class LMP_wrapper():
     
     image = self._retrieve_image()
     image_url = self._upload_image(image)
-    store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
+    self.store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
 
   def move_obj_to_pos(self, obj_name, target_pos):
       # move the object to the desired xyz position
@@ -785,13 +826,13 @@ lmp_tabletop_coords = {
       }
 
 
-def setup_LMP(env, cfg_tabletop, mpc):
+def setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name):
   # LMP env wrapper
   cfg_tabletop = copy.deepcopy(cfg_tabletop)
   cfg_tabletop['env'] = dict()
   cfg_tabletop['env']['init_objs'] = list([obj['name'] for obj in env.objects_info])
   cfg_tabletop['env']['coords'] = lmp_tabletop_coords
-  LMP_env = LMP_wrapper(env, cfg_tabletop, mpc)
+  LMP_env = LMP_wrapper(env, cfg_tabletop, mpc, db_sessionmaker, task_name)
   # LMP_env = LMP_wrapper_mock(env, cfg_tabletop)
 
   # creating APIs that the LMPs can interact with
@@ -820,17 +861,17 @@ def setup_LMP(env, cfg_tabletop, mpc):
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')
 
   # creating the function-generating LMP
-  lmp_fgen = LMPFGen(cfg_tabletop['lmps']['fgen'], fixed_vars, variable_vars)
+  lmp_fgen = LMPFGen(cfg_tabletop['lmps']['fgen'], fixed_vars, variable_vars, db_sessionmaker)
 
   # creating other low-level LMPs
   variable_vars.update({
-      k: LMP(k, cfg_tabletop['lmps'][k], lmp_fgen, fixed_vars, variable_vars)
+      k: LMP(k, cfg_tabletop['lmps'][k], lmp_fgen, fixed_vars, variable_vars, db_sessionmaker)
       for k in ['parse_obj_name', 'parse_position', 'parse_question', 'transform_shape_pts']
   })
 
   # creating the LMP that deals w/ high-level language commands
   lmp_tabletop_ui = LMP(
-      'tabletop_ui', cfg_tabletop['lmps']['tabletop_ui'], lmp_fgen, fixed_vars, variable_vars, main_lmp=True
+      'tabletop_ui', cfg_tabletop['lmps']['tabletop_ui'], lmp_fgen, fixed_vars, variable_vars, db_sessionmaker, main_lmp=True
   )
 
   return lmp_tabletop_ui
