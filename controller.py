@@ -117,14 +117,15 @@ class Controller(AbstractController):
 		regularization = 0
 		for i, r in enumerate(self.robots_info):
 			#regularization += ca.norm_2(self.x[i] - (np.array([0,0,0.2])))**2
-			regularization += .4 * ca.norm_2(self.dx[i])**2
+			regularization += .1 * ca.norm_2(self.dx[i])**2
+			regularization += .0002 * ca.norm_2(ca.sin(self.psi[i]) * ca.cos(self.psi[i]))**2
 			#regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
 		mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
-		lterm = 0.4*mterm
+		lterm = 2*mterm
 		# state objective
 		self.mpc.set_objective(mterm=mterm, lterm=lterm)
 		# input objective
-		u_kwargs = {f'u{r["name"]}':1. for r in self.robots_info} | {f'u_psi{r["name"]}':1. for r in self.robots_info} 
+		u_kwargs = {f'u{r["name"]}':0.5 for r in self.robots_info} | {f'u_psi{r["name"]}':1e-5 for r in self.robots_info} 
 		self.mpc.set_rterm(**u_kwargs)
 
 	def set_constraints(self, nlp_constraints: Optional[List[ca.SX]] = None):
@@ -132,8 +133,8 @@ class Controller(AbstractController):
 		for r in self.robots_info:
 			# base constraints (state)
 			self.mpc.bounds['lower','_x', f'x{r["name"]}'] = np.array([-3., -3., 0.0]) # stay above table
-			#self.mpc.bounds['upper','_x', f'psi{r["name"]}'] = np.pi/2 * np.ones((1, 1))   # rotation upper bound
-			#self.mpc.bounds['lower','_x', f'psi{r["name"]}'] = -np.pi/2 * np.ones((1, 1))  # rotation lower bound
+			self.mpc.bounds['upper','_x', f'psi{r["name"]}'] = np.pi * 0.55 * np.ones((1, 1))   # rotation upper bound
+			self.mpc.bounds['lower','_x', f'psi{r["name"]}'] = -np.pi * 0.55 * np.ones((1, 1))  # rotation lower bound
 
 			# base constraints (input)
 			self.mpc.bounds['upper','_u', f'u{r["name"]}'] = self.cfg.hu * np.ones((self.cfg.nu, 1))  # input upper bound
