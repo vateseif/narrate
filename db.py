@@ -1,6 +1,6 @@
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON
 
 Base = declarative_base()
 
@@ -9,6 +9,7 @@ class Episode(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String)  # Optional, if you want to name or otherwise identify episodes
+    state_trajectories = Column(JSON)  # Store state trajectories as JSON
     epochs = relationship("Epoch", backref="episode")
 
 class Epoch(Base):
