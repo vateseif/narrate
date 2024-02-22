@@ -2,8 +2,6 @@ from prompts.prompts import PROMPTS, OD_PROMPTS
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from typing import List
 
-TASK_NAME = "stacking"  # [stacking, pyramid, letter_l]
-
 class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = False
@@ -65,9 +63,4 @@ class RobotConfig(AbstractRobotConfig):
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 9e-7
   TIME_THRESHOLD: float = 40
-
-
-class DBConfig:
-  db_name: str = f"data/DBs/{TASK_NAME}.db"
-
 

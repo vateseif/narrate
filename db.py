@@ -1,11 +1,8 @@
-from config.config import DBConfig
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey
 
-cfg = DBConfig()
 Base = declarative_base()
-
 
 class Episode(Base):
     __tablename__ = 'episodes'
@@ -23,9 +20,3 @@ class Epoch(Base):
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
     image = Column(String, nullable=False)  # Store images as binary data
-
-
-engine = create_engine(f'sqlite:///{cfg.db_name}')
-Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)

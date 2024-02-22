@@ -17,9 +17,12 @@ from datetime import datetime
 
 
 from robot import Robot
-from db import Session, Episode, Epoch
+from db import Episode, Epoch, Base
 from core import AbstractSimulation, BASE_DIR
 from config.config import SimulationConfig, RobotConfig
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 class Simulation(AbstractSimulation):
@@ -38,7 +41,7 @@ class Simulation(AbstractSimulation):
         # simulation time
         self.t = 0.
         env_info = (self.env.robots_info, self.env.objects_info)
-        self.robot = Robot(self.env, RobotConfig(self.cfg.task))
+        self.robot = Robot(self.env, Session, task_name, RobotConfig(self.cfg.task))
         # count number of tasks solved from a plan 
         self.task_counter = 0
         # bool for stopping simulation
@@ -321,6 +324,18 @@ class Simulation(AbstractSimulation):
   
 
 if __name__=="__main__":
+    # read task_name kwarg
+    arg = sys.argv
+    if "--task_name" in arg:
+        task_name = arg[arg.index("--task_name")+1]
+    else:
+        raise ValueError("Please provide a task name using the --task_name flag")
+    
+    db_name = f"data/DBs/cap/{task_name}.db"
+    engine = create_engine(f'sqlite:///{db_name}')
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    
     s = Simulation()
     s.reset()
     s.run()
