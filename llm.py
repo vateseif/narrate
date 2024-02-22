@@ -1,7 +1,5 @@
-from time import sleep
-from typing import List, Optional
+from time import time
 from core import AbstractLLM, AbstractLLMConfig
-from mocks.mocks import nmpcMockOptions
 
 import os
 import json
@@ -81,7 +79,9 @@ class LLM(AbstractLLM):
       "response_format": {"type": "json_object"}
     }
     #print([m.text for m in selected_messages])
+    t0 = time()
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=self.headers, json=payload).json()
+    solve_time = time() - t0
     # retrieve text response
     try:
       AI_response = response['choices'][0]['message']['content']
@@ -91,6 +91,7 @@ class LLM(AbstractLLM):
       print(f"Error: {e}")
       AI_response = {"instruction": response['error']['message']}
 
+    AI_response["solve_time"] = solve_time
     return AI_response
 
 
