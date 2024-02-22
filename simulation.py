@@ -51,6 +51,7 @@ class Simulation(AbstractSimulation):
         self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
         #
         self.state_trajectories = []
+        self.mpc_solve_times = []
         self.session = None
 
 
@@ -58,10 +59,11 @@ class Simulation(AbstractSimulation):
         """ round list and if the result is -0.0 convert it to 0.0 """
         return [r if (r:=round(x, n)) != -0.0 else 0.0 for x in l]
     
-    def _append_state_trajectory(self):
+    def _append_robot_info(self):
         for r in self.env.robots_info: # TODO set names instead of robot_0 in panda
             obs = self.observation[f'robot{r["name"]}'] # observation of each robot
             self.state_trajectories.append(obs.tolist())
+        self.mpc_solve_times.append(self.robot.MPC.solve_time)
     
     def _create_scene_description(self):
         """ Look at the observation and create a string that describes the scene to be passed to the task planner """
@@ -171,8 +173,10 @@ class Simulation(AbstractSimulation):
         if self.cfg.logging:
             if self.session is not None:
                 self.episode.state_trajectories = json.dumps(self.state_trajectories)
+                self.episode.mpc_solve_times = json.dumps(self.mpc_solve_times)
                 self.session.commit()
                 self.state_trajectories = []
+                self.mpc_solve_times = []
                 self.session.close()
             self.session = Session()
             self.episode = Episode()  # Assuming Episode has other fields you might set
@@ -194,7 +198,7 @@ class Simulation(AbstractSimulation):
         self.observation, _, done, _ = self.env.step(action)
         # add states to state_trajectories
         if self.cfg.logging:
-            self._append_state_trajectory()
+            self._append_robot_info()
         # visualize trajectory
         if self.cfg.debug:
             trajectory = self.robot.retrieve_trajectory()
@@ -217,6 +221,7 @@ class Simulation(AbstractSimulation):
 
         if self.cfg.logging:
             self.episode.state_trajectories = json.dumps(self.state_trajectories)
+            self.episode.mpc_solve_times = json.dumps(self.mpc_solve_times)
             self.session.commit()
             self.session.close()
         # exit

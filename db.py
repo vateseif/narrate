@@ -13,6 +13,7 @@ class Episode(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String)  # Optional, if you want to name or otherwise identify episodes
     state_trajectories = Column(JSON)  # Store state trajectories as JSON
+    mpc_solve_times = Column(JSON)  # Store MPC solve times as JSON
     epochs = relationship("Epoch", backref="episode")
 
 class Epoch(Base):
