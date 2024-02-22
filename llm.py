@@ -37,6 +37,7 @@ model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-previ
 
 episode = None
 state_trajectories = []
+mpc_solve_times = []
 
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 global_log = ""
@@ -195,24 +196,21 @@ class LMP:
         return prompt, use_query
 
     def __call__(self, query, episode_local, context='', **kwargs):
-        global episode
+        global episode, state_trajectories
         episode = episode_local
 
         prompt, use_query = self.build_prompt(query, context=context)
 
         while True:
             try:
-                code_str = request_oai(prompt, model_name=self._cfg["engine"])
-                # code_str = openai.Completion.create(
-                #     prompt=prompt,
-                #     stop=self._stop_tokens,
-                #     temperature=self._cfg['temperature'],
-                #     engine=self._cfg['engine'],
-                #     max_tokens=self._cfg['max_tokens']
-                # )['choices'][0]['text'].strip()
+                code_str, solve_time = request_oai(prompt, model_name=self._cfg["engine"])
                 log_msg = f"[LMP, Response] {code_str}"
                 append_to_chat_log(log_msg)
-                self.store_epoch_db(episode.id, "ai", log_msg, "")
+                log_msg = {
+                   "message": log_msg,
+                    "solve_time": solve_time
+                }
+                self.store_epoch_db(episode.id, "ai", json.dumps(log_msg), "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -249,6 +247,7 @@ class LMP:
         if self.main_lmp:
             clear_global_log_chat()
             dump_trajectory_to_db(episode.id, self.sessionmaker, state_trajectories)
+            state_trajectories = []
         return log
 
 
@@ -289,17 +288,14 @@ class LMPFGen:
         prompt = f'{self._base_prompt}\n{use_query}'
         while True:
             try:
-                f_src = request_oai(prompt, model_name=self._cfg["engine"])
-                # f_src = openai.Completion.create(
-                #     prompt=prompt, 
-                #     stop=self._stop_tokens,
-                #     temperature=self._cfg['temperature'],
-                #     engine=self._cfg['engine'],
-                #     max_tokens=self._cfg['max_tokens']
-                # )['choices'][0]['text'].strip()
+                f_src, solve_time = request_oai(prompt, model_name=self._cfg["engine"])
                 log_msg = f"[LMPFGen, Response] {f_src}"
                 append_to_chat_log(log_msg)
-                self.store_epoch_db(episode.id, "ai", log_msg, "")
+                log_msg = {
+                    "message": log_msg,
+                    "solve_time": solve_time
+                }
+                self.store_epoch_db(episode.id, "ai", json.dumps(log_msg), "")
                 break
             except Exception as e:
                 print(f'OpenAI API got err {e}')
@@ -601,6 +597,7 @@ class LMP_wrapper():
       trajectory = self.mpc.retrieve_trajectory()
       self.env.visualize_trajectory(trajectory)
       self.obs, done = self.env_step_wrapper(action)
+      mpc_solve_times.append(self.mpc.solve_time)
     
     image = self._retrieve_image()
     image_url = self._upload_image(image)
@@ -821,10 +818,13 @@ def setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name):
   return lmp_tabletop_ui
 
 def request_oai(message, model_name, max_tokens=512):
+  t0 = time.time()
   if model_name == "davinci-002" or model_name == "gpt-3.5-turbo-instruct":
-    return request_oai_legacy(message, model_name, max_tokens)
+    res = request_oai_legacy(message, model_name, max_tokens)
   else:
-    return request_oai_chat(message, model_name, max_tokens)
+    res = request_oai_chat(message, model_name, max_tokens)
+  solve_time = time.time() - t0
+  return res, solve_time
 
 def request_oai_chat(message, model_name, max_tokens=512):
     payload = {
@@ -860,5 +860,6 @@ def dump_trajectory_to_db(episode_id, sessionmaker, state_trajectories):
     session = sessionmaker()
     episode = session.query(Episode).filter_by(id=episode_id).first()
     episode.state_trajectories = state_trajectories
+    episode.mpc_solve_times = mpc_solve_times
     session.commit()
     session.close()  
