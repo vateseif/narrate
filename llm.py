@@ -36,6 +36,7 @@ from config.config import SimulationConfig, RobotConfig
 model_name = "gpt-4-0125-preview" # "gpt-3.5-turbo-instruct" # "gpt-4-0125-preview" # "davinci-002"  # "gpt-4"
 
 episode = None
+state_trajectories = []
 
 TOKEN_ENCODER = tiktoken.encoding_for_model("gpt-4")
 global_log = ""
@@ -248,6 +249,7 @@ class LMP:
         log = deepcopy(global_log_chat)
         if self.main_lmp:
             clear_global_log_chat()
+            dump_trajectory_to_db(episode.id, self.sessionmaker, state_trajectories)
         return log
 
 
@@ -472,6 +474,17 @@ class LMP_wrapper():
     session.close()
     clear_global_log()
 
+  def _append_state_trajectory(self, obs):
+    global state_trajectories
+    for r in self.env.robots_info: # TODO set names instead of robot_0 in panda
+      robot_obs = obs[f'robot{r["name"]}']
+      state_trajectories.append(robot_obs.tolist())
+
+  def env_step_wrapper(self, action):
+    obs, _, done, _ = self.env.step(action)
+    self._append_state_trajectory(obs)
+    return obs, done
+
   def _open_gripper(self):
     self.gripper = -0.01
     self.gripper_timer = 0
@@ -480,13 +493,13 @@ class LMP_wrapper():
         self.gripper = 1.
       else:
         self.gripper_timer += 1
-      self.obs, _, done, _ = self.env.step([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
+      self.obs, done = self.env_step_wrapper([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
     
 
   def _close_gripper(self):
     self.gripper = -0.02
     for _ in range(15):
-      self.obs, _, done, _ = self.env.step([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
+      self.obs, done = self.env_step_wrapper([np.array([0., 0., 0., 0., 0., 0., self.gripper])])
   
   def _update_obs(self, obs):
     self.obs = obs
@@ -570,12 +583,9 @@ class LMP_wrapper():
     return frame_np
   
   def _is_robot_busy(self):
-    print(f"{self.mpc.cost=}")
-    print(f"{self.mpc.prev_cost=}")
     c1 = self.mpc.prev_cost - self.mpc.cost <= self.robot_cfg.COST_DIIFF_THRESHOLD if self.mpc.prev_cost is not None else False
     c2 = self.mpc.cost <= self.robot_cfg.COST_THRESHOLD
     c3 = time.time()-self.t_prev_task>=self.robot_cfg.TIME_THRESHOLD
-    print(f"Robot busy: {c1=}, {c2=}, {c3=}")
     return not (c1 or c2 or c3)
 
   def run_mpc(self, optimization):
@@ -593,7 +603,7 @@ class LMP_wrapper():
       
       trajectory = self.mpc.retrieve_trajectory()
       self.env.visualize_trajectory(trajectory)
-      self.obs, _, done, _ = self.env.step(action)
+      self.obs, done = self.env_step_wrapper(action)
     
     image = self._retrieve_image()
     image_url = self._upload_image(image)
@@ -668,64 +678,6 @@ class LMP_wrapper():
     # return robot end-effector xyz position in robot base frame
     print(f"robot position: {self.obs['robot'][:3]}")
     return self.obs['robot'][:3]
-
-  def goto_pos(self, position_xy):
-    # move the robot end-effector to the desired xy position while maintaining same z
-    ee_xyz = self.get_robot_pos()
-    position_xyz = np.concatenate([position_xy, ee_xyz[-1]])
-    while np.linalg.norm(position_xyz - ee_xyz) > 0.01:
-      # TODO implement in env
-      self.env.movep(position_xyz)
-      # self.env.step_sim_and_render()
-      # ee_xyz = self.env.get_ee_pos()
-
-  def follow_traj(self, traj):
-    # traj is a list of xy positions
-    for pos in traj:
-      self.goto_pos(pos)
-  
-  def get_corner_positions(self):
-    normalized_corners = np.array([
-        [0, 1],
-        [1, 1],
-        [0, 0],
-        [1, 0]
-    ])
-    return np.array(([self.denormalize_xy(corner) for corner in normalized_corners]))
-
-  def get_side_positions(self):
-    normalized_sides = np.array([
-        [0.5, 1],
-        [1, 0.5],
-        [0.5, 0],
-        [0, 0.5]
-    ])
-    return np.array(([self.denormalize_xy(side) for side in normalized_sides]))
-
-  def get_corner_name(self, pos):
-    corner_positions = self.get_corner_positions()
-    corner_idx = np.argmin(np.linalg.norm(corner_positions - pos, axis=1))
-    return ['top left corner', 'top right corner', 'bottom left corner', 'botom right corner'][corner_idx]
-
-  def get_side_name(self, pos):
-    side_positions = self.get_side_positions()
-    side_idx = np.argmin(np.linalg.norm(side_positions - pos, axis=1))
-    return ['top side', 'right side', 'bottom side', 'left side'][side_idx]
-  
-# class LMP_wrapper_mock:
-#    def __init__(self, env, cfg) -> None:
-#       pass
-   
-#    def get_obj_pos(self, obj_name):
-#       print("Called get_obj_pos")
-#       return np.array([0, 0, 0])
-   
-#    def get_obj_names(self,):
-#       print("Called get_obj_names")
-#       return ["red_cube", "green_cube"]
-   
-#    def put_first_on_second(self, obj_a, obj_b):
-#       print("Called put_first_on_second")
       
 
 cfg_tabletop = {
@@ -846,14 +798,6 @@ def setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name):
       name: eval(name)
       for name in shapely.geometry.__all__ + shapely.affinity.__all__
   })
-  # variable_vars = {
-  #     k: getattr(LMP_env, k)
-  #     for k in [
-  #         'get_obj_pos', 'get_robot_pos', 'denormalize_xy',
-  #         'put_first_on_second', 'get_obj_names',
-  #         'get_corner_name', 'get_side_name',
-  #     ]
-  # }
   variable_vars = {
       k: getattr(LMP_env, k)
       for k in [
@@ -914,3 +858,10 @@ def request_oai_legacy(message, model_name, max_tokens=512):
     AI_response = response['choices'][0]['text']
     print(f"\33[92m {AI_response} \033[0m \n")
     return AI_response
+
+def dump_trajectory_to_db(episode_id, sessionmaker, state_trajectories):
+    session = sessionmaker()
+    episode = session.query(Episode).filter_by(id=episode_id).first()
+    episode.state_trajectories = state_trajectories
+    session.commit()
+    session.close()  
