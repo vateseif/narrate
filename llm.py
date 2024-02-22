@@ -202,9 +202,6 @@ class LMP:
 
         while True:
             try:
-                log_msg = f"[LMP, Prompt] {prompt}"
-                append_to_chat_log(log_msg)
-                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 code_str = request_oai(prompt, model_name=self._cfg["engine"])
                 # code_str = openai.Completion.create(
                 #     prompt=prompt,
@@ -292,9 +289,6 @@ class LMPFGen:
         print(f"[LMPFGen] {prompt=}")
         while True:
             try:
-                log_msg = f"[LMPFGen, Prompt] {prompt}"
-                append_to_chat_log(log_msg)
-                self.store_epoch_db(episode.id, "ai", log_msg, "")
                 f_src = request_oai(prompt, model_name=self._cfg["engine"])
                 # f_src = openai.Completion.create(
                 #     prompt=prompt, 
