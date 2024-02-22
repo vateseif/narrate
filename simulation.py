@@ -49,17 +49,19 @@ class Simulation(AbstractSimulation):
         self.frames_list = []
         self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
         self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
-        # init log file
-        if self.cfg.logging:
-            self.session = Session()
-            n_episodes = len(os.listdir("data/images"))
-            self.episode_folder = f"data/images/{n_episodes}"
-            os.mkdir(self.episode_folder)
+        #
+        self.state_trajectories = []
+        self.session = None
+
 
     def _round_list(self, l, n=2):
         """ round list and if the result is -0.0 convert it to 0.0 """
         return [r if (r:=round(x, n)) != -0.0 else 0.0 for x in l]
     
+    def _append_state_trajectory(self):
+        for r in self.env.robots_info: # TODO set names instead of robot_0 in panda
+            obs = self.observation[f'robot{r["name"]}'] # observation of each robot
+            self.state_trajectories.append(obs.tolist())
     
     def _create_scene_description(self):
         """ Look at the observation and create a string that describes the scene to be passed to the task planner """
@@ -168,11 +170,17 @@ class Simulation(AbstractSimulation):
         self.frames_list = []
         if self.cfg.logging:
             if self.session is not None:
+                self.episode.state_trajectories = json.dumps(self.state_trajectories)
+                self.session.commit()
+                self.state_trajectories = []
                 self.session.close()
             self.session = Session()
             self.episode = Episode()  # Assuming Episode has other fields you might set
             self.session.add(self.episode)
             self.session.commit()
+            n_episodes = len(os.listdir("data/images"))
+            self.episode_folder = f"data/images/{n_episodes}"
+            os.mkdir(self.episode_folder)
 
 
     def step(self):
@@ -182,11 +190,15 @@ class Simulation(AbstractSimulation):
         self.robot.init_states(self.observation, self.t)
         # compute action
         action = self.robot.step() # TODO: this is a list because the env may have multiple robots
+        # apply action
+        self.observation, _, done, _ = self.env.step(action)
+        # add states to state_trajectories
+        if self.cfg.logging:
+            self._append_state_trajectory()
+        # visualize trajectory
         if self.cfg.debug:
             trajectory = self.robot.retrieve_trajectory()
             self.env.visualize_trajectory(trajectory)
-        # apply action
-        self.observation, _, done, _ = self.env.step(action)
         # store RGB frames if wanna save video
         if self.save_video:
             frame = np.array(self.env.render("rgb_array", width=self.cfg.frame_width, height=self.cfg.frame_height))
@@ -204,6 +216,8 @@ class Simulation(AbstractSimulation):
             self._save_video()
 
         if self.cfg.logging:
+            self.episode.state_trajectories = json.dumps(self.state_trajectories)
+            self.session.commit()
             self.session.close()
         # exit
         #sys.exit()  
