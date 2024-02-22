@@ -568,14 +568,23 @@ class LMP_wrapper():
     frame_np = frame_np.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
 
     return frame_np
+  
+  def _is_robot_busy(self):
+    print(f"{self.mpc.cost=}")
+    print(f"{self.mpc.prev_cost=}")
+    c1 = self.mpc.prev_cost - self.mpc.cost <= self.robot_cfg.COST_DIIFF_THRESHOLD if self.mpc.prev_cost is not None else False
+    c2 = self.mpc.cost <= self.robot_cfg.COST_THRESHOLD
+    c3 = time.time()-self.t_prev_task>=self.robot_cfg.TIME_THRESHOLD
+    print(f"Robot busy: {c1=}, {c2=}, {c3=}")
+    return not (c1 or c2 or c3)
 
   def run_mpc(self, optimization):
     global episode
-    STEP_TIME = 5.0
     self.mpc.init_states(self.obs, self.t, False)
     self.mpc.setup_controller(optimization)
-    s = time.time()
-    while time.time() - s < STEP_TIME:
+    self.t_prev_task = time.time()
+    print(f"{optimization=}")
+    while self._is_robot_busy():
       self.mpc.init_states(self.obs, self.t, False)
       action = []
       control: List[np.ndarray] = self.mpc.step()
