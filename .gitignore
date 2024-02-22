@@ -157,3 +157,6 @@ keys/
 *.docx
 
 *.db
+
+cache/
+visualizations/

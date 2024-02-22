@@ -199,7 +199,6 @@ class LMP:
         episode = episode_local
 
         prompt, use_query = self.build_prompt(query, context=context)
-        print(f"[LMP] {prompt=}")
 
         while True:
             try:
@@ -288,7 +287,6 @@ class LMPFGen:
 
         use_query = f'{self._cfg["query_prefix"]}{f_sig}{self._cfg["query_suffix"]}'
         prompt = f'{self._base_prompt}\n{use_query}'
-        print(f"[LMPFGen] {prompt=}")
         while True:
             try:
                 f_src = request_oai(prompt, model_name=self._cfg["engine"])
@@ -593,7 +591,6 @@ class LMP_wrapper():
     self.mpc.init_states(self.obs, self.t, False)
     self.mpc.setup_controller(optimization)
     self.t_prev_task = time.time()
-    print(f"{optimization=}")
     while self._is_robot_busy():
       self.mpc.init_states(self.obs, self.t, False)
       action = []
