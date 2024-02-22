@@ -1,7 +1,7 @@
 import do_mpc
 import numpy as np
 import casadi as ca
-from time import sleep
+from time import time
 from itertools import chain
 from typing import Dict, List, Optional, Tuple
 
@@ -66,6 +66,7 @@ class Controller(AbstractController):
 		self.u_psi = []   # gripper rotation control (=rotational velocity)
 		self.cost = float("inf")    # cost function
 		self.prev_cost = None # previous cost function
+		self.solve_time = 0.
 		for i, r in enumerate(self.robots_info):
 			# position (x, y, z)
 			self.x.append(self.model.set_variable(var_type='_x', var_name=f'x{r["name"]}', shape=(self.cfg.nx,1)))
@@ -256,7 +257,9 @@ class Controller(AbstractController):
 	def _solve(self) -> List[np.ndarray]:
 		""" Returns a list of conntrols, 1 for each robot """
 		# solve mpc at state x0
+		t0 = time()
 		u0 = self.mpc.make_step(self.mpc.x0).squeeze()
+		self.solve_time = time() - t0
 		# compute action for each robot
 		action = []
 		for i in range(len(self.robots_info)):
