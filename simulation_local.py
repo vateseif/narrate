@@ -1,17 +1,13 @@
 import os
-import io
-import sys
 import cv2
 import gym
 import json
-import base64
-import asyncio
-import requests
 import panda_gym
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from aiohttp import web
+from time import sleep
+from typing import List
 from datetime import datetime
 
 
@@ -212,20 +208,18 @@ class Simulation(AbstractSimulation):
         return done
 
     def close(self):
-        # close environment
-        #self.thread.join()
-        self.stop_thread = True
         # init list of RGB frames if wanna save video
         if self.save_video:
             self._save_video()
-
+        # store state_trajectories and mpc_solve_times
         if self.cfg.logging:
             self.episode.state_trajectories = json.dumps(self.state_trajectories)
             self.episode.mpc_solve_times = json.dumps(self.mpc_solve_times)
             self.session.commit()
             self.session.close()
-        # exit
-        #sys.exit()  
+        # close env
+        self.env.close()
+
 
     def _save_video(self):
         # Define the parameters
@@ -242,41 +236,12 @@ class Simulation(AbstractSimulation):
             out.write(frame_bgr)
         # Release the VideoWriter
         out.release()
-
-    async def http_close(self, request):
-        self.close()
-        return web.json_response({"content": "Simulation closed"})
-
-    async def http_reset(self, request):
-        self.reset()
-        return web.json_response({"content": "Simulation reset"})
-
-    async def http_solve_task(self, request):
-        data = await request.json()
-        user_task = data.get('content')
-        AI_response = self._solve_task(user_task)
-        return web.json_response([{"type": "OD", "content": AI_response}])
-    
-    async def http_make_plan(self, request):
-        data = await request.json()
-        user_message = data.get('content')
-        pretty_msg = self._make_plan(user_message)
-        return web.json_response([{"type": "TP", "content": pretty_msg}])
-    
-    async def http_next_task(self, request):
-        is_plan_unfinished = self.task_counter < len(self.plan["tasks"])
-        task = self.plan["tasks"][self.task_counter] if is_plan_unfinished else "finished"
-        optimization = self.optimizations[self.task_counter] if (self.optimizations and is_plan_unfinished)  else None
-        AI_response = self._solve_task(task, optimization)
-        if AI_response is not None: self.task_counter += 1
-        return web.json_response([{"type": "OD", "content": AI_response}])
         
-    async def http_upload_plan(self, request):
-        data = await request.json()
-        query = data['query']
-        plan = data['plan']
+  
+    def run(self, query:str, plan:dict, optimizations:List[dict]):
         self.task_counter = 0
         self.plan = plan
+        self.optimizations = optimizations
         pretty_msg = "Tasks:\n"
         pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
         if self.cfg.logging:
@@ -284,63 +249,28 @@ class Simulation(AbstractSimulation):
             image_url = self._uplaod_image(image)
             self._store_epoch_db(self.episode.id, "human", query, image_url)
             self._store_epoch_db(self.episode.id, "TP", pretty_msg, image_url)
-        return web.json_response({"response": "Plan uploaded"})
-    
-    async def http_upload_optimizations(self, request):
-        data = await request.json()
-        self.task_counter = 0
-        self.optimizations = data.get('content')
-        return web.json_response({"response": "Optimizations uploaded"})
-    
-    async def http_save_recording(self, request):
-        self.save_video = False
-        self._save_video()
-        return web.json_response({"response": "Recording saved"})
-    
-    async def http_start_recording(self, request):      
-        self.save_video = True
-        return web.json_response({"response": "Recording started"})
-    
-    async def http_cancel_recording(self, request):
-        self.save_video = False
-        self.frames_list = []
-        return web.json_response({"response": "Recording cancelled"})
-    
-    async def main(self, app):
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, 'localhost', 8080)
-        await site.start()
 
-        await self._run()
+        is_plan_unfinished = True
+        while is_plan_unfinished:
+            is_plan_unfinished = self.task_counter < len(self.plan["tasks"])
+            task = self.plan["tasks"][self.task_counter] if is_plan_unfinished else "finished"
+            optimization = self.optimizations[self.task_counter] if (self.optimizations and is_plan_unfinished)  else None
+            AI_response = self._solve_task(task, optimization)
+            if AI_response is not None: self.task_counter += 1
+            
+            while self.robot.is_robot_busy():
+                self.step()
 
-    async def _run(self):
-        while not self.stop_thread:
-            done = self.step()
-            await asyncio.sleep(0.05)
-            if done:
-                break
-        self.env.close()
-
-    def run(self):
-        app = web.Application()
-        app.add_routes([
-            web.post('/make_plan', self.http_make_plan),
-            web.post('/solve_task', self.http_solve_task),
-            web.post('/upload_plan', self.http_upload_plan),
-            web.post('/upload_optimizations', self.http_upload_optimizations),
-            web.get('/close', self.http_close),
-            web.get('/reset', self.http_reset),
-            web.get('/next_task', self.http_next_task),
-            web.get('/save_recording', self.http_save_recording),
-            web.get('/start_recording', self.http_start_recording),
-            web.get('/cancel_recording', self.http_cancel_recording)
-        ])
-
-        asyncio.run(self.main(app))
-  
 
 if __name__=="__main__":
+    # init sim
     s = Simulation()
-    s.reset()
-    s.run()
+    for t in ['stack', 'L', 'pyramid']:
+        s.reset()
+        # load data
+        task_folder = f'data/llm_responses/{t}'
+        data = json.load(open(f"{task_folder}/3.json", 'r'))
+        # run sim
+        s.run(data["query"], data["plan"], data["optimizations"])
+
+    s.close()

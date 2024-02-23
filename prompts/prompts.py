@@ -37,14 +37,12 @@ You can control the robot in the following way:
       (a) you can firmly grasp an object only if the gripper is at the same position of the center of the object and the gripper is open.
       
 Rules:
-  (1) You MUST ALWAYS specificy which collisions the gripper has to avoid in your instructions.
-  (2) Never assume there are designated positions in the scene. Always specify the position of the gripper in the simplest way.
-  (3) Be specific and concise in your instruction and don't provide reasonings. Keep your instructions short, straight and to the point.
-  (4) NEVER avoid collisions with an object you are gripping.
-  (5) Use these common sense rules for spatial reasoning:
+  (1) You MUST ALWAYS specificy which objects specifically the gripper has to avoid collisions with in your instructions.
+  (2) NEVER avoid collisions with an object you are gripping.
+  (3) Use these common sense rules for spatial reasoning:
     (a) 'in front of' and 'behind' for positive and negative x-axis directions.
     (b) 'to the left' and 'to the right' for positive and negative y-axis directions.
-    (c) 'above' and 'below' for positive and negative z-axis directions.
+    (c) 'above' for positive z-axis directions.
 
 
 You MUST always respond with a json following this format:
@@ -61,7 +59,7 @@ objects = ['coffee pod', 'coffee machine']
 }
 
 objects = ['blue block', 'yellow block', 'mug']
-# Query: place the blue block on the yellow block, and avoid the mug at all time.
+# Query: stack the blue block on the yellow block, and avoid the mug at all time.
 {
   "tasks": ["move gripper to the blue block and avoid collisions with the yellow block and the mug", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the yellow block and the mug", "open_gripper()"]
 }
@@ -78,6 +76,22 @@ objects = ['plate', 'fork', 'knife', 'glass]
   "tasks": ["move gripper to the fork and avoid collisions with plate, knife, glass", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with plate, knife, glass", "open_gripper()", "move gripper to the glass and avoid collisions with fork, plate, knife", "close_gripper()", "move gripper in front of the plate avoiding collisions with fork, plate and knife", "open_gripper()", "move gripper to the knife and avoid collisions with fork, plate, glass", "close_gripper()", "move gripper to the right side of the plate avoiding collisions with fork, plate and glass", "open_gripper()"]
 }
 
+"""
+
+"""
+objects = ['blue_cube', 'orange_cube', 'green_cube', 'red_cube']
+# Query: rearrange cubes to write the letter L on the table. keep green at its location
+{
+  "tasks": ["move gripper to the blue_cube and avoid collisions with green_cube, orange_cube, red_cube", "close_gripper()", "move gripper to the left side of the green_cube and avoid collisions with green_cube, orange_cube, red_cube", "open_gripper()", "move gripper to the orange_cube and avoid collisions with green_cube, blue_cube, red_cube", "close_gripper()", "move gripper to the left side of the blue_cube and avoid collisions with green_cube, blue_cube, red_cube", "open_gripper()", "move gripper to the red_cube and avoid collisions with green_cube, blue_cube, orange_cube", "close_gripper()", "move gripper behind of the green_cube and avoid collisions with green_cube, blue_cube, orange_cube", "open_gripper()"]
+}
+"""
+
+"""
+objects = ['blue block', 'yellow block', 'green block']
+# Query: stack blocks on the yellow block.
+{
+  "tasks": ["move gripper to the blue block and avoid collisions with the green and yellow block", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the green and yellow block", "open_gripper()", "move gripper to the green block and avoid collisions with the blue and yellow block", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the blue and yellow block", "open_gripper()"]
+}
 """
 
 
@@ -138,6 +152,15 @@ objects = ['coffee_pod', 'coffee_machine']
   "inequality_constraints": ["coffee_pod.size - ca.norm_2(x - coffee_pod.position)", "0.1 - x[2]"]
 }
 Notice that there's no collision avoidance constraint with the coffee_machine because it is not in the query and because gripper is not moving to or nearby it.
+
+
+objects = ['blue_container', 'yellow_container', 'green_container']
+# Query: Move gripper above stack composed by blue, yellow, and green container
+{
+  "objective": "ca.norm_2(x - (blue_container.position + np.array([0, 0, blue_container.size + yellow_container.size + green_container.size])))**2",
+  "equality_constraints": [],
+  "inequality_constraints": ["blue_container.size*0.85 - ca.norm_2(x - blue_container.position)", "yellow_container.size*0.85 - ca.norm_2(x - yellow_container.position)", "green_container.size*0.85 - ca.norm_2(x - green_container.position)"]
+}
 
 objects = ['mug']
 # Query: Move the gripper 0.1m upwards

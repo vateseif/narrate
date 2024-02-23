@@ -15,6 +15,9 @@ class Robot(AbstractRobot):
 
 		self.gripper = 1. # 1 means the gripper is open
 		self.gripper_timer = 0
+		self.gripper_width = 0.0
+		self.prev_gripper_width = 0.07
+		self.t_prev_task = time()
 		self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
 		self.OD = LLM(LLMConfig("OD", self.cfg.task))
 		
@@ -22,7 +25,9 @@ class Robot(AbstractRobot):
 
 	def init_states(self, observation:Dict[str, np.ndarray], t:float):
 		""" Update simulation time and current state of MPC controller"""
-		self.MPC.init_states(observation, t, self.gripper==-0.02)
+		self.MPC.init_states(observation, t, self.gripper==-0.08)
+		self.prev_gripper_width = self.gripper_width
+		self.gripper_width = observation["robot"][-1]
 
 	def pretty_print(self, response:dict):
 		if "instruction" in response.keys():
@@ -48,11 +53,13 @@ class Robot(AbstractRobot):
 		return instruction
 
 	def _open_gripper(self):
-		self.gripper = -0.01
+		self.gripper = 0.001
 		self.gripper_timer = 0
+		self.gripper_width = 0.07
 
 	def _close_gripper(self):
-		self.gripper = -0.02
+		self.gripper = -0.08
+		self.gripper_width = 0.0
 
 	def reset(self):
 		# open grfipper
@@ -69,8 +76,11 @@ class Robot(AbstractRobot):
 		print(f"\33[92m {plan} \033[0m \n")
 		return plan
 	
-	def _is_robot_busy(self):
-		return not (self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or self.MPC.cost <= self.cfg.COST_THRESHOLD or time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD)
+	def is_robot_busy(self):
+		return not ((self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or 
+			  		self.MPC.cost <= self.cfg.COST_THRESHOLD or
+			  		time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD) and
+					(np.abs(self.gripper_width-self.prev_gripper_width) <= self.cfg.GRIPPER_WIDTH_THRESHOLD))
 
 	def update_gripper(self, plan:str) -> Optional[str]:
 		if "open_gripper" in plan.lower():
@@ -88,7 +98,7 @@ class Robot(AbstractRobot):
 		""" Applies and returns the optimization designed by the Optimization Designer """
 		# if custom function is called apply that
 
-		if self._is_robot_busy(): 
+		if self.is_robot_busy(): 
 			return None
 				
 		self.t_prev_task = time()
@@ -132,6 +142,7 @@ class Robot(AbstractRobot):
 		# Logic for opening and closing gripper
 		if self.gripper<0.9 and self.gripper >= -0.01 and self.gripper_timer>self.cfg.open_gripper_time: 
 			self.gripper = 1.
+			self.gripper_width = 0.07
 		else:
 			self.gripper_timer += 1
 

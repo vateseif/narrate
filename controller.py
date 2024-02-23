@@ -64,8 +64,8 @@ class Controller(AbstractController):
 		self.dpsi = []    # gripper rotational speed
 		self.u = []       # gripper control (=velocity)
 		self.u_psi = []   # gripper rotation control (=rotational velocity)
-		self.cost = float('inf')    # cost function
-		self.prev_cost = 0. # previous cost function
+		self.cost = 1.    # cost function
+		self.prev_cost = float('inf') # previous cost function
 		self.solve_time = 0. # time to solve the optimization problem
 		for i, r in enumerate(self.robots_info):
 			# position (x, y, z)
