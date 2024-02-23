@@ -80,8 +80,8 @@ def append_message(message:dict):
 # count number of episodes in db
 n_episodes = session.query(func.count(Episode.id)).scalar()  # Assuming 'id' is a primary key column
 episodes = [i for i in range(1, n_episodes+1)]
-episode_id = st.selectbox('Select an Episode', options=episodes, format_func=get_task_type)
-
+# episode_id = st.selectbox('Select an Episode', options=episodes, format_func=get_task_type)
+episode_id = st.number_input('Select an Episode', min_value=1, max_value=n_episodes+1, value=1, step=1)
 
 epochs = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).all()
 st.session_state.messages = []
