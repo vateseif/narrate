@@ -24,36 +24,42 @@ st.title("Language to Control")
 avatars = {"human":"images/seif_avatar.jpeg", "OD":"images/wall-e.png", "TP":"images/eve.png", "ai":"images/wall-e.png"}
 
 def plot_trajectory(episode_id):
-	ep = session.query(Episode).filter_by(id=episode_id).first()
 	try:
-		state_trajectory = ep.state_trajectories
+		ep = session.query(Episode).filter_by(id=episode_id).first()
+		try:
+			state_trajectory = ep.state_trajectories
+		except:
+			st.write("No state trajectory available for this episode.")
+			return
+		state_trajectory = [np.array(s) for s in state_trajectory]
+
+		# 3d plot of the trajectory
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		ax.set_title("3D trajectory")
+		ax.plot([s[0] for s in state_trajectory], [-s[1] for s in state_trajectory], [s[2] for s in state_trajectory])
+
+		# plot start and end
+		ax.scatter(state_trajectory[0][0], -state_trajectory[0][1], state_trajectory[0][2], c='r', marker='o')
+		ax.scatter(state_trajectory[-1][0], -state_trajectory[-1][1], state_trajectory[-1][2], c='g', marker='o')
+		st.pyplot(fig)
 	except:
-		st.write("No state trajectory available for this episode.")
 		return
-	state_trajectory = [np.array(s) for s in state_trajectory]
-
-	# 3d plot of the trajectory
-	fig = plt.figure()
-	ax = fig.add_subplot(111, projection='3d')
-	ax.set_title("3D trajectory")
-	ax.plot([s[0] for s in state_trajectory], [-s[1] for s in state_trajectory], [s[2] for s in state_trajectory])
-
-	# plot start and end
-	ax.scatter(state_trajectory[0][0], -state_trajectory[0][1], state_trajectory[0][2], c='r', marker='o')
-	ax.scatter(state_trajectory[-1][0], -state_trajectory[-1][1], state_trajectory[-1][2], c='g', marker='o')
-	st.pyplot(fig)
 
 def plot_mpc_times(episode_id):
-	ep = session.query(Episode).filter_by(id=episode_id).first()
 	try:
-		mpc_times = ep.mpc_solve_times
+		ep = session.query(Episode).filter_by(id=episode_id).first()
+		try:
+			mpc_times = ep.mpc_solve_times
+		except:
+			st.write("No MPC solve times available for this episode.")
+			return
+		fig = plt.figure()
+		plt.title("MPC solve times")
+		plt.plot(mpc_times)
+		st.pyplot(fig)
 	except:
-		st.write("No MPC solve times available for this episode.")
 		return
-	fig = plt.figure()
-	plt.title("MPC solve times")
-	plt.plot(mpc_times)
-	st.pyplot(fig)
 
 
 def get_task_type(episode_id):	
