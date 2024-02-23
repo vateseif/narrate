@@ -24,10 +24,11 @@ def plot_trajectory(episode_id):
 		return
 	state_trajectory = [np.array(s) for s in state_trajectory]
 
+	efficiency = sum([np.linalg.norm(state_trajectory[i+1][:3] - state_trajectory[i][:3]) for i in range(len(state_trajectory)-1)])
 	# 3d plot of the trajectory
 	fig = plt.figure()
 	ax = fig.add_subplot(111, projection='3d')
-	ax.set_title("3D trajectory")
+	ax.set_title("3D trajectory. Cumulative travel = {:.2f}m".format(efficiency))
 	ax.plot([s[0] for s in state_trajectory], [-s[1] for s in state_trajectory], [s[2] for s in state_trajectory])
 
 	# plot start and end
