@@ -90,7 +90,7 @@ if __name__=="__main__":
     import multiprocessing
 
     N_EXPERIMENTS = 10
-    for prompt_f, task_name in zip(prompts[::-1], task_names[::-1]):
+    for prompt_f, task_name in zip(prompts, task_names):
         print("Running experiments for task: ", task_name)
 
         db_name = f"data/DBs/cap/{task_name}.db"

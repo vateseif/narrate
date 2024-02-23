@@ -1,4 +1,3 @@
-from prompts.prompts import PROMPTS, OD_PROMPTS
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from typing import List
 
