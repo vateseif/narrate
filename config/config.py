@@ -59,12 +59,12 @@ class RobotConfig(AbstractRobotConfig):
   tp_type: str = "plan_optimization"          # Task planner: ["plan_objective, plan_optimization"]
   od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
   controller_type: str = "optimization"       # Controller type:        ["objective", "optimization"]
-  open_gripper_time: int = 20
+  open_gripper_time: int = 28
   wait_s: float = 30. # wait time after a new MPC formualtion is applied
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 5e-7
   GRIPPER_WIDTH_THRESHOLD: float = 4e-6
-  TIME_THRESHOLD: float = 10
+  TIME_THRESHOLD: float = 15
   MAX_OD_ATTEMPTS: int = 2
 
 
