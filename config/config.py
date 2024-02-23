@@ -64,7 +64,7 @@ class RobotConfig(AbstractRobotConfig):
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 5e-7
   GRIPPER_WIDTH_THRESHOLD: float = 4e-6
-  TIME_THRESHOLD: float = 15
+  TIME_THRESHOLD: float = 10
   MAX_OD_ATTEMPTS: int = 2
 
 

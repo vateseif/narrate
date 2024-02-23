@@ -109,7 +109,6 @@ class Robot(AbstractRobot):
 			# apply optimization functions to MPC
 			try:
 				self.MPC.setup_controller(optimization)
-				print(f"\033[93m{optimization}\033[0m\n")
 				return self.pretty_print(optimization)
 			except Exception as e:
 				print(f"Error with Open Loop Optimization: {e}")
@@ -123,7 +122,6 @@ class Robot(AbstractRobot):
 				optimization = self.OD.run(self._get_instruction(query), short_history=True)
 				# apply optimization functions to MPC
 				self.MPC.setup_controller(optimization)
-				print(f"\33[92m {optimization} \033[0m \n")
 				return self.pretty_print(optimization)
 			except Exception as e:
 				print(f"Error: {e}")
