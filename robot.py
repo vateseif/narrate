@@ -15,8 +15,10 @@ class Robot(AbstractRobot):
     self.gripper_timer = 0
     env_info = (env.robots_info, env.objects_info)
     robots_info, objects_info = env_info
-    mpc = Controller(env_info)
-    self.lmp = setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name)
+    self._mpc = Controller(env_info)
+    self._env = env
+    self._dbsessionmaker = db_sessionmaker
+    self._task_name = task_name
     
 
   def init_states(self, observation:Dict[str, np.ndarray], t:float):
@@ -27,7 +29,7 @@ class Robot(AbstractRobot):
 
   def reset(self):
     self.gripper = 1.
-    self.lmp.reset()
+    self.lmp = setup_LMP(self._env, cfg_tabletop, self._mpc, self._dbsessionmaker, self._task_name)
 
   def plan_task(self, user_message:str, base64_image=None) -> str:
     """ Runs the Task Planner by passing the user message and the current frame """
