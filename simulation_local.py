@@ -265,7 +265,7 @@ class Simulation(AbstractSimulation):
 if __name__=="__main__":
     # init sim
     s = Simulation()
-    for t in ['stack', 'L', 'pyramid']:
+    for t in ['stack', 'pyramid', 'L']:
         s.reset()
         # load data
         task_folder = f'data/llm_responses/{t}'

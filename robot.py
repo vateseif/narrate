@@ -15,8 +15,7 @@ class Robot(AbstractRobot):
 
 		self.gripper = 1. # 1 means the gripper is open
 		self.gripper_timer = 0
-		self.gripper_width = 0.0
-		self.prev_gripper_width = 0.07
+		self.gripper_is_moving = False
 		self.t_prev_task = time()
 		self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
 		self.OD = LLM(LLMConfig("OD", self.cfg.task))
@@ -25,9 +24,7 @@ class Robot(AbstractRobot):
 
 	def init_states(self, observation:Dict[str, np.ndarray], t:float):
 		""" Update simulation time and current state of MPC controller"""
-		self.MPC.init_states(observation, t, self.gripper==-0.08)
-		self.prev_gripper_width = self.gripper_width
-		self.gripper_width = observation["robot"][-1]
+		self.MPC.init_states(observation, t, self.gripper==-0.02)
 
 	def pretty_print(self, response:dict):
 		if "instruction" in response.keys():
@@ -53,13 +50,14 @@ class Robot(AbstractRobot):
 		return instruction
 
 	def _open_gripper(self):
-		self.gripper = 0.001
+		self.gripper = -0.01
 		self.gripper_timer = 0
-		self.gripper_width = 0.07
+		self.gripper_is_moving = True
 
 	def _close_gripper(self):
-		self.gripper = -0.08
-		self.gripper_width = 0.0
+		self.gripper = -0.02
+		self.gripper_timer = 0
+		self.gripper_is_moving = True
 
 	def reset(self):
 		# open grfipper
@@ -77,10 +75,10 @@ class Robot(AbstractRobot):
 		return plan
 	
 	def is_robot_busy(self):
-		return not ((self.MPC.prev_cost - self.MPC.cost <= self.cfg.COST_DIIFF_THRESHOLD or 
+		return not ((np.abs(self.MPC.prev_cost - self.MPC.cost) <= self.cfg.COST_DIIFF_THRESHOLD or 
 			  		self.MPC.cost <= self.cfg.COST_THRESHOLD or
-			  		time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD) and
-					(np.abs(self.gripper_width-self.prev_gripper_width) <= self.cfg.GRIPPER_WIDTH_THRESHOLD))
+			  		time()-self.t_prev_task>=self.cfg.TIME_THRESHOLD) and 
+					not self.gripper_is_moving)
 
 	def update_gripper(self, plan:str) -> Optional[str]:
 		if "open_gripper" in plan.lower():
@@ -138,13 +136,14 @@ class Robot(AbstractRobot):
 		control: List[np.ndarray] = self.MPC.step()
 		for u in control:
 			action.append(np.hstack((u, self.gripper)))  
-		
-		# Logic for opening and closing gripper
-		if self.gripper<0.9 and self.gripper >= -0.01 and self.gripper_timer>self.cfg.open_gripper_time: 
-			self.gripper = 1.
-			self.gripper_width = 0.07
+			
+		if self.gripper_timer >= self.cfg.open_gripper_time:
+			self.gripper_is_moving = False
 		else:
 			self.gripper_timer += 1
+			self.gripper_is_moving = True
+			if self.gripper_timer == int(self.cfg.open_gripper_time/2) and self.gripper == -0.01:
+				self.gripper = 1.
 
 		return action
 
