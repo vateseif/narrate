@@ -99,7 +99,10 @@ if __name__=="__main__":
             time.sleep(3)
 
             for i in tqdm(range(N_EXPERIMENTS)):
-                s._start_cap(prompt_f())
+                try:
+                    s._start_cap(prompt_f())
+                except Exception as e:
+                    print(e)
                 s.reset()
                 time.sleep(2)
         
