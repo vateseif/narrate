@@ -81,8 +81,10 @@ for e in epochs:
 		st.session_state.messages += [{'type':'image', 'content':e.image}, {"type":e.role, 'content':e.content.replace("#","\n")}]
 	else:
 		st.session_state.messages += [{"type":e.role, 'content':e.content.replace("#","\n")}]
-st.session_state.messages = st.session_state.messages[:-1]
 
+
+# read user query
+append_message(st.session_state.messages[-1])
 # Visualize last image to see if task completed succesfully
 append_message(st.session_state.messages[0])
 
