@@ -17,9 +17,9 @@ def get_instruction(query:str):
     instruction += f"# Query: {query}"
     return instruction
 
-tasks = ["stack", "L", "pyramid"]
+tasks = ['stack', 'L', 'pyramid']
 
-for i in range(35):
+for i in range(5):
     queries = [
         "make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
         "rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
@@ -28,14 +28,17 @@ for i in range(35):
 
     for j, t in enumerate(tasks):
         query = queries[j]
-        plan = TP.run(get_instruction(query))
+        plan = TP.run(get_instruction(query), short_history=True)
         optimizations = []
         for q in tqdm(plan['tasks']):
             if q not in ['open_gripper()', 'close_gripper()']:
-                opt = OD.run(get_instruction(q), short_history=True)
-                if "instruction" not in opt.keys():
-                    optimizations.append(opt)
-                else:
+                try:
+                    opt = OD.run(get_instruction(q), short_history=True)
+                    if "instruction" not in opt.keys():
+                        optimizations.append(opt)
+                    else:
+                        optimizations.append(None)
+                except:
                     optimizations.append(None)
             else:
                 optimizations.append(None)

@@ -117,7 +117,7 @@ class Robot(AbstractRobot):
 		for i in range(self.cfg.MAX_OD_ATTEMPTS):
 			try:
 				# design optimization functions
-				if i == 1:
+				if i == 0:
 					query += "The previous optimization was not feasible. Please try again with a simpler formulation. You can assume the size of all objects is the same."
 				optimization = self.OD.run(self._get_instruction(query), short_history=True)
 				# apply optimization functions to MPC
