@@ -7,7 +7,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = False
   debug: bool = False
   logging: bool = True
-  task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
@@ -17,7 +17,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   frame_distance: float = 1.3
   frame_yaw: int = 40
   frame_pitch: int = -30
-  method:str = 'ours_objective'
+  method:str = 'ours'
 
 
 class LLMConfig(AbstractLLMConfig):
@@ -62,6 +62,7 @@ class RobotConfig(AbstractRobotConfig):
   controller_type: str = "optimization"       # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 28
   wait_s: float = 30. # wait time after a new MPC formualtion is applied
+  method: str = "optimization" # ['optimization', 'objective']
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 5e-7
   GRIPPER_WIDTH_THRESHOLD: float = 4e-6

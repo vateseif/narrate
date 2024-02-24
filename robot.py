@@ -120,6 +120,9 @@ class Robot(AbstractRobot):
 				if i == 0:
 					query += "The previous optimization was not feasible. Please try again with a simpler formulation. You can assume the size of all objects is the same."
 				optimization = self.OD.run(self._get_instruction(query), short_history=True)
+				if self.cfg.method == "objective":
+					optimization["equality_constraints"] = []
+					optimization["inequality_constraints"] = []
 				# apply optimization functions to MPC
 				self.MPC.setup_controller(optimization)
 				return self.pretty_print(optimization)

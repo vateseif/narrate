@@ -12,29 +12,33 @@ colors = ["red", "green", "blue", "orange"]
 TP = LLM(LLMConfig("TP_OL", "Cubes"))
 OD = LLM(LLMConfig("OD", "Cubes"))
 
-def get_instruction(query:str):
-    instruction = f"objects = {['blue_cube', 'green_cube', 'orange_cube', 'red_cube']}\n"
+def get_instruction(query:str, task:str):
+    if task in ['stack', 'L', 'pyramid']:
+        instruction = f"objects = {['blue_cube', 'green_cube', 'orange_cube', 'red_cube']}\n" 
+    elif task == 'CleanPlate':
+        instruction = f"objects = {['plate', 'sponge']}\n" 
     instruction += f"# Query: {query}"
     return instruction
 
-method = 'ours_objective'
-tasks = ['stack', 'L', 'pyramid']
+method = 'ours'
+tasks = ['CleanPlate']
 
-for i in range(24):
+for i in range(47):
     queries = [
-        "make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
-        "rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
-        "build a pyramid with the {} and {} cubes at the base and {} cube at the top. keep {} cube at its original position.".format(*(2*sample(colors, 3)))
+        #"make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
+        #"rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
+        #"build a pyramid with the {} and {} cubes at the base and {} cube at the top. keep {} cube at its original position.".format(*(2*sample(colors, 3)))
+        "clean the plate with the sponge. (go above the plate before starting cleaning)"
     ]
 
     for j, t in enumerate(tasks):
         query = queries[j]
-        plan = TP.run(get_instruction(query), short_history=True)
+        plan = TP.run(get_instruction(query, t), short_history=True)
         optimizations = []
         for q in tqdm(plan['tasks']):
             if q not in ['open_gripper()', 'close_gripper()']:
                 try:
-                    opt = OD.run(get_instruction(q), short_history=True)
+                    opt = OD.run(get_instruction(q, t), short_history=True)
                     if "instruction" not in opt.keys():
                         optimizations.append(opt)
                     else:
