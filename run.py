@@ -15,17 +15,19 @@ def extract_number(filename):
 if __name__ == "__main__":
 
     s = Simulation()
-    tasks = ["stack", "L", "pyramid"]
+    method = "ours_objective" # in ['ours', 'ours_objective']
+    tasks = ["stack", "L", "pyramid"] # 'stack', 'pyramid', 'L'
     
     for t in tasks:
         print("\nRunning task: ", t)
-        task_folder = f'data/llm_responses/{t}'
-        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)[46:51]):
+        task_folder = f'data/{method}/llm_responses/{t}'
+        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)[:1]):
             # reset env
             s.reset()
             # load data
             data = json.load(open(f"{task_folder}/{file}", 'r'))
+            optimizations = [{"objective":o["objective"], "equality_constraints":[], "inequality_constraints":[]} if o is not None else None for o in data["optimizations"]]
             # run sim
-            s.run(data["query"] + f'(file: {file})', data["plan"], data["optimizations"])
+            s.run(data["query"] + f'(file: {file})', data["plan"], optimizations)
 
     s.close()

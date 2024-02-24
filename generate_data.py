@@ -17,9 +17,10 @@ def get_instruction(query:str):
     instruction += f"# Query: {query}"
     return instruction
 
+method = 'ours_objective'
 tasks = ['stack', 'L', 'pyramid']
 
-for i in range(5):
+for i in range(24):
     queries = [
         "make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
         "rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
@@ -42,8 +43,8 @@ for i in range(5):
                     optimizations.append(None)
             else:
                 optimizations.append(None)
-
+        #if t =="pyramid": query = query[:-49]
         data = {"query": query, "plan": plan, "optimizations": optimizations}
-        data_folder = f"data/llm_responses/{t}"
+        data_folder = f"data/{method}/llm_responses/{t}"
         n_files = len(os.listdir(data_folder))
         json.dump(data, open(f"{data_folder}/{n_files}.json", "w"), indent=4)

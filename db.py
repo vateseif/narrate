@@ -1,7 +1,7 @@
 from config.config import DBConfig
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON
 
 cfg = DBConfig()
 Base = declarative_base()
@@ -14,7 +14,7 @@ class Episode(Base):
     name = Column(String)  # Optional, if you want to name or otherwise identify episodes
     state_trajectories = Column(JSON)  # Store state trajectories as JSON
     mpc_solve_times = Column(JSON)  # Store MPC solve times as JSON
-    n_collisions = Column(Integer)
+    #n_collisions = Column(Integer)
     epochs = relationship("Epoch", backref="episode")
 
 class Epoch(Base):
@@ -28,7 +28,3 @@ class Epoch(Base):
     image = Column(String, nullable=False)  # Store images as binary data
 
 
-engine = create_engine(f'sqlite:///{cfg.db_name}')
-Base.metadata.create_all(engine)
-
-Session = sessionmaker(bind=engine)

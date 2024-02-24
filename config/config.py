@@ -17,6 +17,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   frame_distance: float = 1.3
   frame_yaw: int = 40
   frame_pitch: int = -30
+  method:str = 'ours_objective'
 
 
 class LLMConfig(AbstractLLMConfig):
@@ -69,6 +70,6 @@ class RobotConfig(AbstractRobotConfig):
 
 
 class DBConfig:
-  db_name: str = "data/DBs/stack_cubes.db"
+  db_name: str = "data/DBs/cubes_objective.db"
 
 
