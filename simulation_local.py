@@ -247,8 +247,12 @@ class Simulation(AbstractSimulation):
   
     def run(self, query:str, plan:dict, optimizations:List[dict]):
         self.task_counter = 0
-        self.plan = plan
-        self.optimizations = optimizations
+        if plan is not None:
+            self.plan = plan
+        else:
+            self._make_plan(query)
+        if optimizations is not None:
+            self.optimizations = optimizations
         pretty_msg = "Tasks:\n"
         pretty_msg += "".join([f"{i+1}. {task}\n" for i, task in enumerate(self.plan["tasks"])])
         if self.cfg.logging:
@@ -272,12 +276,10 @@ class Simulation(AbstractSimulation):
 if __name__=="__main__":
     # init sim
     s = Simulation()
-    for t in ['stack', 'pyramid', 'L']:
-        s.reset()
-        # load data
-        task_folder = f'data/llm_responses/{t}'
-        data = json.load(open(f"{task_folder}/3.json", 'r'))
-        # run sim
-        s.run(data["query"], data["plan"], data["optimizations"])
-
+    s.reset()
+    # load data
+    task_folder = f'data/{s.cfg.method}/llm_responses/{s.cfg.task}'
+    # run sim
+    s.run("clean the plate with the sponge", None, None)
+    
     s.close()

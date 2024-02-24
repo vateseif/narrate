@@ -919,13 +919,16 @@ Output:
 
 PROMPTS = {
     "TP_OL": {
-        "Cubes": TP_PROMPT_OL
+        "Cubes": TP_PROMPT_OL,
+        "CleanPlate": TP_PROMPT_OL,
     },
     "TP_CL": {
-        "Cubes": TP_PROMPT_CL
+        "Cubes": TP_PROMPT_CL,
+        "CleanPlate": TP_PROMPT_CL,
     },
     "OD": {
         "Cubes": OD_PROMPT,
+        "CleanPlate": OD_PROMPT,
     },
 }
 

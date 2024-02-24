@@ -13,10 +13,12 @@ from PIL import Image
 from tqdm import tqdm
 from aiohttp import web
 from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 
 from robot import Robot
-from db import Session, Episode, Epoch
+from db import Base, Episode, Epoch
 from core import AbstractSimulation, BASE_DIR
 from config.config import SimulationConfig, RobotConfig
 
@@ -53,6 +55,11 @@ class Simulation(AbstractSimulation):
         self.state_trajectories = []
         self.mpc_solve_times = []
         self.session = None
+
+        if self.cfg.logging:
+            engine = create_engine(f'sqlite:///data/{self.cfg.method}/DBs/{cfg.task}.db')
+            Base.metadata.create_all(engine)
+            self.Session = sessionmaker(bind=engine)
 
 
     def _round_list(self, l, n=2):
@@ -120,7 +127,7 @@ class Simulation(AbstractSimulation):
         return frame_np
         
     def _store_epoch_db(self, episode_id, role, content, image_url):
-        session = Session()
+        session = self.Session()
         
         # Find the last epoch number for this episode
         last_epoch = session.query(Epoch).filter_by(episode_id=episode_id).order_by(Epoch.time_step.desc()).first()
