@@ -53,7 +53,7 @@ class Simulation(AbstractSimulation):
         self.session = None
 
         if self.cfg.logging:
-            engine = create_engine(f'sqlite:///data/{self.cfg.method}/DBs/cubes.db')
+            engine = create_engine(f'sqlite:///data/{self.cfg.method}/DBs/{cfg.task}.db')
             Base.metadata.create_all(engine)
             self.Session = sessionmaker(bind=engine)
 
