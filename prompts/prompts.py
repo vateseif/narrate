@@ -7,45 +7,62 @@ prompt_tabletop_ui = '''
 
 # Python 2D robot control script
 import numpy as np
-from env_utils import get_obj_pos, put_first_on_second, move_obj_to_pos
+from env_utils import get_obj_pos, pick_and_place_first_on_second_and_release, pick_and_move_obj_to_pos_and_release, pick_and_place_first_on_second_without_releasing, pick_and_move_obj_to_pos_without_releasing, move_gripper_to_pos_without_releasing, carry_grasped_obj_to_pos
 
 objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 # put the four cubes in a straight line
 say('Ok - putting the cubes in a straight line')
 red_cube_pos = get_obj_pos('red_cube')
 blue_cube_target = get_pt_to_the_right(red_cube_pos)
-move_obj_to_pos('blue_cube', blue_cube_target)
+pick_and_move_obj_to_pos_and_release('blue_cube', blue_cube_target)
 green_cube_target = get_pt_to_the_right(blue_cube_target)
-move_obj_to_pos('green_cube', green_cube_target)
+pick_and_move_obj_to_pos_and_release('green_cube', green_cube_target)
 orange_cube_target = get_pt_to_the_right(green_cube_target)
-move_obj_to_pos('orange_cube', orange_cube_target)
+pick_and_move_obj_to_pos_and_release('orange_cube', orange_cube_target)
 
 objects = ['yellow_cube', 'green_cube', 'orange_cube', 'blue_cube']
 # put the four cubes in a vertical straight line
 say('Ok - putting the cubes in a vertical straight line, asusming the red cube is at the bottom')
 red_cube_pos = get_obj_pos('red_cube')
 blue_cube_target = get_pt_in_front(red_cube_pos)
-move_obj_to_pos('blue_cube', blue_cube_target)
+pick_and_move_obj_to_pos_and_release('blue_cube', blue_cube_target)
 green_cube_target = get_pt_in_front(blue_cube_target)
-move_obj_to_pos('green_cube', green_cube_target)
+pick_and_move_obj_to_pos_and_release('green_cube', green_cube_target)
 orange_cube_target = get_pt_in_front(green_cube_target)
-move_obj_to_pos('orange_cube', orange_cube_target)
+pick_and_move_obj_to_pos_and_release('orange_cube', orange_cube_target)
 
 objects = ['yellow_cube', 'green_cube', 'purple_cube']
 # put the yellow cube on top of the green cube
 say('Ok - putting the yellow cube on top of the green cube')
-put_first_on_second('yellow_cube', 'green_cube')
+pick_and_place_first_on_second_and_release('yellow_cube', 'green_cube')
 
 objects = ['cyan_cube', 'orange_cube', 'blue_cube']
 # stack the blue cube on top of the orange cube
 say('Ok - stacking the blue cube on top of the orange cube')
-put_first_on_second('blue_cube', 'orange_cube')
+pick_and_place_first_on_second_and_release('blue_cube', 'orange_cube')
 
 objects = ['red_cube', 'green_cube', 'orange_cube', 'blue_cube']
 # put the red cube next to the green cube
 say('Ok - putting the red cube next to the green cube')
 red_cube_target = get_pt_to_the_right(get_obj_pos('green_cube'))
-move_obj_to_pos('red_cube', red_cube_target)
+pick_and_move_obj_to_pos_and_release('red_cube', red_cube_target)
+
+objects = ['box', 'pear']
+# put the pear on the box
+say('Ok - putting the pear on the box assuming I dont need to release the pear')
+pick_and_place_first_on_second_without_releasing('pear', 'box')
+
+objects = ['apple', 'banana', 'chair']
+# you are grasping a banana, put it on the chair
+say('Ok - moving the banana on the chair')
+carry_grasped_obj_to_pos(get_obj_pos('chair'))
+
+objects = ['apple', 'banana', 'table']
+# you are grasping an apple, move it 5cm closer to you
+say('Ok - moving the apple 5cm closer to me')
+apple_pos = get_obj_pos('apple')
+new_pos = apple_pos + np_array_from_list([-0.05, 0, 0])
+move_gripper_to_pos_without_releasing(new_pos)
 '''.strip()
 
 prompt_parse_obj_name = '''
@@ -239,7 +256,7 @@ import numpy as np
 from shapely.geometry import *
 from shapely.affinity import *
 
-from env_utils import get_obj_pos, get_obj_names, put_first_on_second
+from env_utils import get_obj_pos, pick_and_place_first_on_second_and_release, pick_and_move_obj_to_pos_and_release, pick_and_place_first_on_second_without_releasing, pick_and_move_obj_to_pos_without_releasing, move_gripper_to_pos_without_releasing, carry_grasped_obj_to_pos
 
 # define function: total = get_total(xs=numbers).
 def get_total(xs):
@@ -286,5 +303,8 @@ put_first_on_second('object1', 'object0')
 
 # example: get the position of the first object.
 obj_names = get_obj_names()
-pos_2d = get_obj_pos(obj_names[0])
+pos_3d = get_obj_pos(obj_names[0])
+pos_x = pos_3d[0]
+pos_y = pos_3d[1]
+pos_z = pos_3d[2]
 '''.strip()

@@ -522,7 +522,9 @@ class LMP_wrapper():
 
   def get_obj_pos(self, obj_name):
     # return the xyz position of the object in robot base frame
-    return list(self.obs[obj_name]["position"])
+    pos = list(self.obs[obj_name]["position"])
+    print(f"Object {obj_name} position: {pos}")
+    return pos
 
   # def get_obj_position_np(self, obj_name):
   #   return self.get_pos(obj_name)
@@ -602,9 +604,21 @@ class LMP_wrapper():
     image = self._retrieve_image()
     image_url = self._upload_image(image)
     self.store_epoch_db(episode.id, "ai", deepcopy(global_log), image_url)
-
-  def move_obj_to_pos(self, obj_name, target_pos):
-      # move the object to the desired xyz position
+  
+  def move_gripper_to_pos_without_releasing(self, target_pos):
+      target_pos = list(np.array(target_pos))
+      optimization = {
+          "objective": f"ca.norm_2(x - np.array({target_pos}))**2",
+          "equality_constraints":[],
+          "inequality_constraints":[]
+        }
+      self.run_mpc(optimization)
+  
+  def carry_grasped_obj_to_pos(self, target_pos):
+     self.move_gripper_to_pos_without_releasing(target_pos)
+  
+  def pick_and_move_obj_to_pos_without_releasing(self, obj_name, target_pos):
+     # move the object to the desired xyz position
       pick_pos = self.get_obj_pos(obj_name) if isinstance(obj_name, str) else obj_name
       place_pos = list(np.array(target_pos))
       self._open_gripper()
@@ -649,6 +663,10 @@ class LMP_wrapper():
       }
       self.run_mpc(optimization)
 
+  def pick_and_move_obj_to_pos_and_release(self, obj_name, target_pos):
+      self.pick_and_move_obj_to_pos_without_releasing(obj_name, target_pos)
+      place_pos = list(np.array(target_pos))
+
       self._open_gripper()
 
       above_place_pos = list(np.array(place_pos) + np.array([0, 0, 0.1]))
@@ -659,13 +677,21 @@ class LMP_wrapper():
       }
       self.run_mpc(optimization)
 
-  def put_first_on_second(self, arg1, arg2):
+  def pick_and_place_first_on_second_and_release(self, arg1, arg2):
     # put the object with obj_name on top of target
     print(f"Called put_first_on_second with {arg1=} and {arg2=}")
     place_pos = self.get_obj_pos(arg2) if isinstance(arg2, str) else arg2
     place_pos = list(np.array(place_pos) + np.array([0, 0, 0.04]))
-    self.move_obj_to_pos(arg1, place_pos)
+    self.pick_and_move_obj_to_pos_and_release(arg1, place_pos)
     print(f"put_first_on_second done DONE")
+  
+  def pick_and_place_first_on_second_without_releasing(self, arg1, arg2):
+    # put the object with obj_name on top of target
+    print(f"Called pick_and_place_first_on_second_without_releasing with {arg1=} and {arg2=}")
+    place_pos = self.get_obj_pos(arg2) if isinstance(arg2, str) else arg2
+    place_pos = list(np.array(place_pos) + np.array([0, 0, 0.04]))
+    self.pick_and_move_obj_to_pos_without_releasing(arg1, place_pos)
+    print(f"pick_and_place_first_on_second_without_releasing done DONE")
 
 
   def get_robot_pos(self):
@@ -795,8 +821,8 @@ def setup_LMP(env, cfg_tabletop, mpc, db_sessionmaker, task_name):
   variable_vars = {
       k: getattr(LMP_env, k)
       for k in [
-          'get_obj_pos', 'get_robot_pos', '_update_obs', 'put_first_on_second', 'move_obj_to_pos', 'get_obj_names',
-          
+          'get_obj_pos', 'get_robot_pos', '_update_obs', 'pick_and_place_first_on_second_and_release', 'pick_and_move_obj_to_pos_and_release', 'get_obj_names',
+          'pick_and_move_obj_to_pos_without_releasing', 'pick_and_place_first_on_second_without_releasing', 'move_gripper_to_pos_without_releasing', 'carry_grasped_obj_to_pos',
       ]
   }
   variable_vars['say'] = lambda msg: print(f'robot says: {msg}')

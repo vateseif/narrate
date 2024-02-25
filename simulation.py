@@ -90,7 +90,8 @@ if __name__=="__main__":
         "clean_plate"
         ]
     prompts = [
-        lambda: "clean the plate with the sponge doing a circular motion on its surface"
+        # lambda: "get the sponge and clean the plate doing a circular motion on its surface",
+        lambda: "get the sponge and clean the plate"
         ]
 
     from tqdm import tqdm
