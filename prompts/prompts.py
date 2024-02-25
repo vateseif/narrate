@@ -232,6 +232,7 @@ prompt_fgen = '''
 # 1. You MUST reply with executable code only. Every natural language comment will make the code invalid.
 # 2. The code you write SHOULD NOT be contained in a code block. Write raw code.
 # 3. Do NOT import any modules. Assume every module is already imported.
+# 4. All the positions are 3-dimensional (x, y, z).
 # The following is a collection of examples.
 
 import numpy as np
@@ -250,7 +251,7 @@ def eval_line(x, slope, y_intercept):
 
 # define function: pt = get_pt_to_the_left(pt, dist).
 def get_pt_to_the_left(pt, dist=0.05):
-    return list(np.array(pt) + np.array([0, , 0]))
+    return list(np.array(pt) + np.array([0, 0, 0]))
 
 # define function: pt = get_pt_to_the_top(pt, dist).
 def get_pt_to_the_top(pt, dist=0.05):

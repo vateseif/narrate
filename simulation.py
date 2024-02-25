@@ -72,16 +72,25 @@ class Simulation(AbstractSimulation):
         out = self.robot.lmp(prompt, self.episode, f'objects = {[el["name"] for el in self.env.objects_info]}')
 
 if __name__=="__main__":   
-    colors = ["red", "green", "blue", "orange"]
+    # CUBES
+    # colors = ["red", "green", "blue", "orange"]
+    # task_names = [
+    #     "stacking",
+    #     "letter_l",
+    #     "pyramid"
+    #     ]
+    # prompts = [
+    #     lambda: "make a stack of cubes on top of the {} one".format(*sample(colors, 1)),
+    #     lambda: "rearrange cubes to write the letter L on the table. keep {} at its location".format(*sample(colors, 1)),
+    #     lambda: "build a pyramid with the {} and {} cubes at the base and {} cube at the top. keep {} cube at its original position.".format(*(2*sample(colors, 3)))
+    #     ]
+
+    # CLEAN PLATE
     task_names = [
-        "stacking",
-        "letter_l",
-        "pyramid"
+        "clean_plate"
         ]
     prompts = [
-        lambda: "make a stack of cubes on top of the {} one".format(*sample(colors, 1)),
-        lambda: "rearrange cubes to write the letter L on the table. keep {} at its location".format(*sample(colors, 1)),
-        lambda: "build a pyramid with the {} and {} cubes at the base and {} cube at the top. keep {} cube at its original position.".format(*(2*sample(colors, 3)))
+        lambda: "clean the plate with the sponge doing a circular motion on its surface"
         ]
 
     from tqdm import tqdm

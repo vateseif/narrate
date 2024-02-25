@@ -5,7 +5,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = False
   logging: bool = True
-  task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
