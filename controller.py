@@ -112,6 +112,23 @@ class Controller(AbstractController):
 		self.mpc.setup()
 		self.mpc.set_initial_guess()
 
+	def _normalize_angle(self, angle):
+		"""
+		Normalize an angle to be within the range [-pi, pi].
+		
+		Parameters:
+		angle (float): The angle in radians to be normalized.
+		
+		Returns:
+		float: The normalized angle within the range [-pi, pi].
+		"""
+		normalized_angle = np.arctan2(np.sin(angle), np.cos(angle))
+		# Check if the angle is outside the range [-pi/2, pi/2] and adjust
+		if normalized_angle > np.pi/2:
+			normalized_angle -= np.pi
+		elif normalized_angle < -np.pi/2:
+			normalized_angle += np.pi
+		return normalized_angle
 	
 	def set_objective(self, mterm: ca.SX=ca.DM([[0]])): # TODO: not sure if ca.SX is the right one
 		# objective terms
@@ -119,8 +136,10 @@ class Controller(AbstractController):
 		for i, r in enumerate(self.robots_info):
 			#regularization += ca.norm_2(self.x[i] - (np.array([0,0,0.2])))**2
 			regularization += .1 * ca.norm_2(self.dx[i])**2
-			regularization += .0002 * ca.norm_2(ca.sin(self.psi[i]) * ca.cos(self.psi[i]))**2
-			#regularization += .4 * ca.norm_2(self.dpsi[i])**2#.4*ca.norm_2(ca.cos(self.psi[i]) - np.cos(r['euler0'][-1]))**2 # TODO 0.1 is harcoded
+			if self.cfg.task == "Cubes":
+				regularization += .0002 * ca.norm_2(ca.sin(self.psi[i]) * ca.cos(self.psi[i]))**2
+			else:
+				regularization += .4 * ca.norm_2(ca.sin(self.psi[i]))**2
 		mterm = mterm + regularization # TODO: add psi reference like this -> 0.1*ca.norm_2(-1-ca.cos(self.psi_right))**2
 		lterm = 2*mterm
 		# state objective
@@ -197,7 +216,7 @@ class Controller(AbstractController):
 		for r in self.robots_info: # TODO set names instead of robot_0 in panda
 			obs = observation[f'robot{r["name"]}'] # observation of each robot
 			x = obs[:3]
-			psi = np.array([obs[5]])
+			psi = self._normalize_angle(np.array([obs[5]]))
 			dx = obs[6:9]
 			x0.append(np.concatenate((x, psi, dx, [0]))) # TODO dpsi is harcoded to 0 here
 			self.pose.append(obs[:6])
