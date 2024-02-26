@@ -5,7 +5,7 @@ from llm import LLM
 from core import AbstractRobot
 from controller import Controller
 from typing import Tuple, List, Dict, Optional
-from config.config import RobotConfig, LLMConfig
+from config.config import RobotConfig, LLMConfig, ControllerConfig
 
 
 class Robot(AbstractRobot):
@@ -17,10 +17,10 @@ class Robot(AbstractRobot):
 		self.gripper_timer = 0
 		self.gripper_is_moving = False
 		self.t_prev_task = time()
-		self.TP = LLM(LLMConfig("TP_OL", self.cfg.task))
+		self.TP = LLM(LLMConfig("TP", self.cfg.task))
 		self.OD = LLM(LLMConfig("OD", self.cfg.task))
 		
-		self.MPC = Controller(env_info)
+		self.MPC = Controller(env_info, ControllerConfig(self.cfg.task))
 
 	def init_states(self, observation:Dict[str, np.ndarray], t:float):
 		""" Update simulation time and current state of MPC controller"""

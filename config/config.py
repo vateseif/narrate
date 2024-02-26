@@ -1,13 +1,13 @@
-from prompts.prompts import PROMPTS, OD_PROMPTS
+from prompts.prompts import PROMPTS
 from core import AbstractControllerConfig, AbstractLLMConfig, AbstractRobotConfig, AbstractSimulaitonConfig
 from typing import List
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
-  render: bool = False
+  render: bool = True
   debug: bool = False
-  logging: bool = True
-  task: str = "CleanPlate"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  logging: bool = False
+  task: str = "Sponge"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
@@ -31,18 +31,9 @@ class LLMConfig(AbstractLLMConfig):
   max_tokens: int = 500
 
 
-class ODConfig(AbstractLLMConfig):
-  def __init__(self, task:str=None) -> None:
-    self.mock_task = None#"OD_move_table"
-    self.prompt: str = OD_PROMPTS[task] # TODO: this is bad. Only works for NMPC now
-  avatar: str = "OD"
-  parsing: str = "optimization"
-  model_name: str = "gpt-4"
-  streaming: bool = False
-  temperature: float = 0.6
-
-
 class ControllerConfig(AbstractControllerConfig):
+  def __init__(self, task:str=None) -> None:
+    self.task: str = task
   nx: int = 3
   nu: int = 3 
   T: int = 15
@@ -56,12 +47,7 @@ class ControllerConfig(AbstractControllerConfig):
 class RobotConfig(AbstractRobotConfig):
   def __init__(self, task:str=None) -> None:
     self.task: str = task
-  name: str = "objective"
-  tp_type: str = "plan_optimization"          # Task planner: ["plan_objective, plan_optimization"]
-  od_type: str = "nmpc_optimization"          # Optimization Designer:  ["objective", "optimization"]
-  controller_type: str = "optimization"       # Controller type:        ["objective", "optimization"]
   open_gripper_time: int = 28
-  wait_s: float = 30. # wait time after a new MPC formualtion is applied
   method: str = "optimization" # ['optimization', 'objective']
   COST_THRESHOLD: float = 3e-5
   COST_DIIFF_THRESHOLD: float = 5e-7
