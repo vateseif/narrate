@@ -185,7 +185,7 @@ class Simulation(AbstractSimulation):
                 self.state_trajectories = []
                 self.mpc_solve_times = []
                 self.session.close()
-            self.session = Session()
+            self.session = self.Session()
             self.episode = Episode()  # Assuming Episode has other fields you might set
             self.session.add(self.episode)
             self.session.commit()
