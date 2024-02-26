@@ -94,7 +94,11 @@ if st.session_state.stage == 2:
 	sleep(3)
 	st.rerun()
 	
+# Reset the simulation
+st.sidebar.button('Reset', on_click=requests.get, args=[base_url+'reset'])
 
+# Close the simulation
+st.sidebar.button('Close', on_click=requests.get, args=[base_url+'close'])
 
 if st.session_state.recording == 0:
 	st.sidebar.button('Start recording', on_click=set_recording_state, args=[1])
