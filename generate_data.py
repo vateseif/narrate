@@ -17,6 +17,8 @@ def get_instruction(query:str, task:str):
         instruction = f"objects = {['blue_cube', 'green_cube', 'orange_cube', 'red_cube']}\n" 
     elif task == 'CleanPlate':
         instruction = f"objects = {['plate', 'sponge']}\n" 
+    elif task == 'Sponge':
+        instruction = f"objects = {['sponge', 'container', 'container_handle', 'sink']}\n"
     instruction += f"# Query: {query}"
     return instruction
 
