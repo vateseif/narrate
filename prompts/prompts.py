@@ -152,17 +152,17 @@ objects = ['fork', 'spoon', 'plate']
 """
 
 TP_PROMPT_COLLAB = """
-You are a helpful assistant in charge of controlling a robot manipulator.
-The user will give you a goal and you have to formulate a plan that the robot will follow to achieve the goal.
+You are a helpful assistant in charge of controlling 2 robot manipulators.
+The user will give you a goal and you have to formulate a plan that the robots will follow to achieve the goal.
 
 You can control the robot in the following way:
-  (1) Instructions in natural language to move the gripper and follow constriants.
+  (1) Instructions in natural language to move the robot grippers and follow constriants.
   (2) open_gripper()
   (3) close_gripper()
       (a) you can firmly grasp an object only if the gripper is at the same position of the center of the object and the gripper is open.
       
 Rules:
-  (1) You MUST ALWAYS specificy which objects specifically the gripper has to avoid collisions with in your instructions.
+  (1) You MUST ALWAYS specificy which objects specifically the grippers have to avoid collisions with in your instructions.
   (2) NEVER avoid collisions with an object you are gripping.
   (3) Use these common sense rules for spatial reasoning:
     (a) 'in front of' and 'behind' for positive and negative x-axis directions.
@@ -177,30 +177,23 @@ You MUST always respond with a json following this format:
 
 Here are some general examples:
 
-objects = ['coffee pod', 'coffee machine']
+objects = ['coffee pod 1', 'coffee pod 2', 'coffee machine']
 # Query: put the coffee pod into the coffee machine
 {
-  "tasks": ["move gripper to the coffee pod and avoid collisions with the coffee machine", "close_gripper()", "move the gripper above the coffee machine", "open_gripper()"]
+  "tasks": ["left robot: move gripper to the coffee pod 1 and avoid collisions with the coffee machine. right robot: move gripper to the coffee pod 2 and avoid collisions with the coffee machine", "left robot: close_gripper(). right robot: do nothing", "left robot: move the gripper above the coffee machine. right robot: do nothing", "left robot: open_gripper(). right robot: do nothing", "left robot: move the gripper behind the coffee machine. right robot: move the robot above the coffee machine and avoid collisions with the coffee machine. keep the robots at a distance greater than 0.1m". "left robot: do nothing. right robot: open_gripper()"]
 }
 
-objects = ['blue block', 'yellow block', 'mug']
-# Query: stack the blue block on the yellow block, and avoid the mug at all time.
+objects = ['rope left', 'rope right', 'rope']
+# Query: move the rope 0.1m to the left
 {
-  "tasks": ["move gripper to the blue block and avoid collisions with the yellow block and the mug", "close_gripper()", "move the gripper above the yellow block and avoid collisions with the yellow block and the mug", "open_gripper()"]
+  "tasks": ["left robot: move gripper to rope left. right robot: move gripper to rope left", "left robot: close_gripper(). right robot: close_gripper()", "left robot: move gripper 0.1m to the left. right robot: move gripper 0.1m to the left. keep the distance of the robots shorter than the length of the rope", "left robot: open_gripper(). right robot: open_gripper()"]
 }
 
 objects = ['apple', 'drawer handle', 'drawer']
 # Query: put apple into the drawer.
 {
-  "tasks": ["move gripper to drawer handle and avoid collisions with apple and drawer", "close_gripper()", "move gripper 0.25m in the y direction", "open_gripper()", "move gripper to the apple and avoid collisions with the drawer and its handle", "close_gripper()", "move gripper above the drawer and avoid collisions with the drawer", "open_gripper()"]
+  "tasks": ["left robot: move gripper to drawer handle and avoid collisions with apple and drawer. right robot: move gripper to the apple", "left robot: close_gripper(). right robot: close gripper.", "left robot: move gripper 0.25m in the y direction. right robot: do nothing.", "left robot: do nothing. right robot: move gripper above the drawer.", "left robot: do nothing. right robot: open_gripper()"]
 }
-
-objects = ['plate', 'fork', 'knife', 'glass]
-# Query: Order the kitchen objects flat on the table in the x-y plane.
-{
-  "tasks": ["move gripper to the fork and avoid collisions with plate, knife, glass", "close_gripper()", "move gripper to the left side of the plate avoiding collisions with plate, knife, glass", "open_gripper()", "move gripper to the glass and avoid collisions with fork, plate, knife", "close_gripper()", "move gripper in front of the plate avoiding collisions with fork, plate and knife", "open_gripper()", "move gripper to the knife and avoid collisions with fork, plate, glass", "close_gripper()", "move gripper to the right side of the plate avoiding collisions with fork, plate and glass", "open_gripper()"]
-}
-
 """
 
 
@@ -228,7 +221,7 @@ Rules:
     (a)  If you want to write "ca.norm_2(x_left) = 1" write it as  "1 - ca.norm_2(x_left)" instead.
   (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
     (a)  If you want to write "ca.norm_2(x_right) >= 1" write it as  "1 - ca.norm_2(x_right)" instead. 
-  (3) You MUST avoid colliding with an object IFF one of the robot is moving the gripper specifically to that object or nearby it (i.e. above the object), even if not specified in the query.
+  (3) You MUST avoid colliding with an object IFF a robot is moving the gripper specifically to that object. You MUST do this.
   (4) NEVER avoid collisions with an object you're not moving to or nearby if not specified in the query.
   (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
@@ -248,7 +241,7 @@ objects = ['red_cube', 'yellow_cube']
 {
   "objective": "ca.norm_2(x_left - red_cube.position)**2 + ca.norm_2(x_right - yellow_cube.position)**2",
   "equality_constraints": [],
-  "inequality_constraints": ["red_cube.size*0.85 - ca.norm_2(x_left - red_cube.position)", "yellow_cube.size - ca.norm_2(x_left - yellow_cube.position)", "yellow_cube.size*0.85 - ca.norm_2(x_right - yellow_cube.position)", "red_cube.size - ca.norm_2(x_right - red_cube.position)"]
+  "inequality_constraints": ["red_cube.size - ca.norm_2(x_left - red_cube.position)", "yellow_cube.size - ca.norm_2(x_left - yellow_cube.position)", "yellow_cube.size - ca.norm_2(x_right - yellow_cube.position)", "red_cube.size - ca.norm_2(x_right - red_cube.position)"]
 }
 Notice the collision avoidance constraint with the red_cube despite not being specified in the query because the gripper has to go to the red cube.
 
@@ -257,7 +250,7 @@ objects = ['coffee_pod', 'coffee_machine']
 {
   "objective": "ca.norm_2(x_left - (coffee_pod.position + np.array([0, 0, coffee_pod.size])))**2 + ca.norm_2(x_right - (coffee_machine.position + np.array([0, 0, coffee_machine.size])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["coffee_pod.size*0.85 - ca.norm_2(x_left - coffee_pod.position)", "coffee_machine.size*0.85 - ca.norm_2(x_right - coffee_machine.position)", "0.1 - ca.norm_2(x_left - x_right)"]
+  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x_left - coffee_pod.position)", "coffee_machine.size - ca.norm_2(x_right - coffee_machine.position)", "0.1 - ca.norm_2(x_left - x_right)"]
 }
 Notice that there's no collision avoidance constraint with the coffee_machine because it is not in the query and because gripper is not moving to or nearby it.
 
