@@ -7,6 +7,9 @@ class SimulationConfig(AbstractSimulaitonConfig):
   render: bool = True
   debug: bool = False
   logging: bool = True
+  logging_video: bool = True
+  logging_video_fps: int = 5
+  logging_video_frequency: int = 10
   task: str = "Sponge"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
@@ -15,7 +18,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   frame_height: int = 1024
   frame_target_position: List[float] = [0.0, 0., 0.]
   frame_distance: float = 1.3
-  frame_yaw: int = 40
+  frame_yaw: int = -45
   frame_pitch: int = -30
   method:str = 'ours'
 

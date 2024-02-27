@@ -39,6 +39,7 @@ class Simulation(AbstractSimulation):
 
         # simulation time
         self.t = 0.
+        self.epoch = 0
         env_info = (self.env.robots_info, self.env.objects_info)
         self.robot = Robot(env_info,RobotConfig(self.cfg.task))
         # count number of tasks solved from a plan 
@@ -49,8 +50,7 @@ class Simulation(AbstractSimulation):
         self.save_video = self.cfg.save_video
         # init list of RGB frames if wanna save video
         self.frames_list = []
-        self.video_name = f"{self.cfg.task}_{datetime.now().strftime('%d-%m-%Y_%H:%M:%S')}"
-        self.video_path = os.path.join(BASE_DIR, f"videos/{self.video_name}.mp4")
+        self.frames_list_logging = []
         #
         self.state_trajectories = []
         self.mpc_solve_times = []
@@ -173,14 +173,12 @@ class Simulation(AbstractSimulation):
         self.plan = None
         self.optimizations = [] 
         self.task_counter = 0
-        # init list of RGB frames if wanna save video
-        if self.save_video:
-            self._save_video()
-        self.frames_list = []
         if self.cfg.logging:
             if self.session is not None:
                 self.episode.state_trajectories = json.dumps(self.state_trajectories)
                 self.episode.mpc_solve_times = json.dumps(self.mpc_solve_times)
+                if self.cfg.logging_video:
+                    self._save_video()
                 self.session.commit()
                 self.state_trajectories = []
                 self.mpc_solve_times = []
@@ -192,11 +190,22 @@ class Simulation(AbstractSimulation):
             n_episodes = len(os.listdir(f"data/{self.cfg.method}/images"))
             self.episode_folder = f"data/{self.cfg.method}/images/{n_episodes}"
             os.mkdir(self.episode_folder)
+            self.video_path = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}_full.mp4")
+            self.video_path_logging = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}.mp4")
+        
+        # init list of RGB frames if wanna save video
+        if self.save_video:
+            self._save_video()
+        self.frames_list = []
+        self.frames_list_logging = []
+        self.t = 0.
+        self.epoch = 0
 
 
     def step(self):
         # increase timestep
         self.t += self.cfg.dt
+        self.epoch += 1
         # update controller (i.e. set the current gripper position)
         self.robot.init_states(self.observation, self.t)
         # compute action
@@ -206,6 +215,8 @@ class Simulation(AbstractSimulation):
         # add states to state_trajectories
         if self.cfg.logging:
             self._append_robot_info()
+            if self.cfg.logging_video and self.epoch%20 == 0:
+                self.frames_list_logging.append(self._retrieve_image())
         # visualize trajectory
         if self.cfg.debug:
             trajectory = self.robot.retrieve_trajectory()
@@ -227,6 +238,8 @@ class Simulation(AbstractSimulation):
             self._save_video()
 
         if self.cfg.logging:
+            if self.cfg.logging_video:
+                self._save_video()
             self.episode.state_trajectories = json.dumps(self.state_trajectories)
             self.episode.mpc_solve_times = json.dumps(self.mpc_solve_times)
             self.session.commit()
@@ -235,20 +248,22 @@ class Simulation(AbstractSimulation):
         #sys.exit()  
 
     def _save_video(self):
-        # Define the parameters
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        # Create a VideoWriter object
-        out = cv2.VideoWriter(self.video_path, fourcc, self.cfg.fps, (self.cfg.frame_width, self.cfg.frame_height))
-        # Write frames to the video
-        for frame in tqdm(self.frames_list):
-            # Ensure the frame is in the correct format (RGBA)
-            if frame.shape[2] == 3:
-                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2RGBA)
-            # Convert the frame to BGR format (required by VideoWriter)
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
-            out.write(frame_bgr)
-        # Release the VideoWriter
-        out.release()
+        for s, p, l in [(self.cfg.save_video, self.video_path, self.frames_list), (self.cfg.logging_video, self.video_path_logging, self.frames_list_logging)]:
+            if not s: continue
+            # Define the parameters
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            # Create a VideoWriter object
+            out = cv2.VideoWriter(p, fourcc, self.cfg.fps, (self.cfg.frame_width, self.cfg.frame_height))
+            # Write frames to the video
+            for frame in tqdm(l):
+                # Ensure the frame is in the correct format (RGBA)
+                if frame.shape[2] == 3:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2RGBA)
+                # Convert the frame to BGR format (required by VideoWriter)
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                out.write(frame_bgr)
+            # Release the VideoWriter
+            out.release()
 
     async def http_close(self, request):
         self.close()

@@ -147,7 +147,8 @@ def append_message(message:dict):
 # count number of episodes in db
 episodes = session.query(Episode).all()  # Assuming 'id' is a primary key column
 episodes = [e for e in episodes if get_task_type(e.id) == task]
-episode_id = st.number_input('Enter an Episode ID', min_value=1, max_value=len(episodes)-1, value=1)
+episode_id = st.number_input('Enter an Episode ID', min_value=1, max_value=len(episodes), value=1)
+episode_id -= 1
 
 epochs = session.query(Epoch).filter_by(episode_id=episodes[episode_id].id).order_by(Epoch.time_step.desc()).all()
 st.session_state.messages = []
@@ -171,10 +172,10 @@ if not st.session_state.messages == []:
 	append_message(st.session_state.messages[0])
 
 	# plot 3D trajectory
-	plot_trajectory(episode_id)
+	plot_trajectory(episodes[episode_id].id)
 
 	# plot MPC solve times
-	plot_mpc_times(episode_id)
+	plot_mpc_times(episodes[episode_id].id)
 
 	# Display chat messages from history on app rerun
 	for message in st.session_state.messages:
