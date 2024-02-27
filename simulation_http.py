@@ -189,8 +189,8 @@ class Simulation(AbstractSimulation):
             self.episode = Episode()  # Assuming Episode has other fields you might set
             self.session.add(self.episode)
             self.session.commit()
-            n_episodes = len(os.listdir("data/images"))
-            self.episode_folder = f"data/images/{n_episodes}"
+            n_episodes = len(os.listdir(f"data/{self.cfg.method}/images"))
+            self.episode_folder = f"data/{self.cfg.method}/images/{n_episodes}"
             os.mkdir(self.episode_folder)
 
 
