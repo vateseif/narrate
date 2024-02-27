@@ -16,12 +16,12 @@ if __name__ == "__main__":
 
     s = Simulation()
     method = "ours" # in ['ours', 'ours_objective']
-    tasks = ["CleanPlate"]#"stack", "L", "pyramid"] # 'stack', 'pyramid', 'L', 'CleanPlate'
+    tasks = ["Sponge"]#"stack", "L", "pyramid"] # 'stack', 'pyramid', 'L', 'CleanPlate'
     
     for t in tasks:
         print("\nRunning task: ", t)
         task_folder = f'data/{method}/llm_responses/{t}'
-        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)):
+        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)[22:]):
             # reset env
             s.reset()
             # load data

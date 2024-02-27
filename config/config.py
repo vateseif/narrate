@@ -4,7 +4,7 @@ from typing import List
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
-  render: bool = True
+  render: bool = False
   debug: bool = False
   logging: bool = True
   logging_video: bool = True

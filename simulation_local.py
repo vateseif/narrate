@@ -192,7 +192,7 @@ class Simulation(AbstractSimulation):
             self.episode_folder = f"data/{self.cfg.method}/images/{n_episodes}"
             os.mkdir(self.episode_folder)
             self.video_path = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}_full.mp4")
-            self.video_path_logging = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}.mp4")
+            self.video_path_logging = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}/{self.episode.id}.mp4")
         
         # init list of RGB frames if wanna save video
         if self.save_video:

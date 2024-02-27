@@ -9,9 +9,6 @@ from config.config import LLMConfig
 
 colors = ["red", "green", "blue", "orange"]
 
-TP = LLM(LLMConfig("TP_OL", "Cubes"))
-OD = LLM(LLMConfig("OD", "Cubes"))
-
 def get_instruction(query:str, task:str):
     if task in ['stack', 'L', 'pyramid']:
         instruction = f"objects = {['blue_cube', 'green_cube', 'orange_cube', 'red_cube']}\n" 
@@ -25,7 +22,10 @@ def get_instruction(query:str, task:str):
 method = 'ours'
 tasks = ['Sponge']
 
-for i in range(50):
+TP = LLM(LLMConfig("TP", "Sponge"))
+OD = LLM(LLMConfig("OD", "Sponge"))
+
+for i in range(48):
     queries = [
         #"make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
         #"rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
