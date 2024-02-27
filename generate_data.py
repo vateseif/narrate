@@ -21,14 +21,15 @@ def get_instruction(query:str, task:str):
     return instruction
 
 method = 'ours'
-tasks = ['CleanPlate']
+tasks = ['Sponge']
 
-for i in range(47):
+for i in range(50):
     queries = [
         #"make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
         #"rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),
         #"build a pyramid with the {} and {} cubes at the base and {} cube at the top. keep {} cube at its original position.".format(*(2*sample(colors, 3)))
-        "clean the plate with the sponge. (go above the plate before starting cleaning)"
+        #"clean the plate with the sponge. (go above the plate before starting cleaning)",
+        "use right robot to move container to sink and left robot to move sponge to the sink. the sponge is wet so keep it above the container to avoid water dropping on the floor"
     ]
 
     for j, t in enumerate(tasks):
