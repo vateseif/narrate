@@ -15,13 +15,13 @@ def extract_number(filename):
 if __name__ == "__main__":
 
     s = Simulation()
-    method = "ours" # in ['ours', 'ours_objective']
+    method = "ours_objective" # in ['ours', 'ours_objective']
     tasks = ["Sponge"]#"stack", "L", "pyramid"] # 'stack', 'pyramid', 'L', 'CleanPlate'
     
     for t in tasks:
         print("\nRunning task: ", t)
         task_folder = f'data/{method}/llm_responses/{t}'
-        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)[22:]):
+        for file in tqdm(sorted(os.listdir(task_folder), key=extract_number)[2:]):
             # reset env
             s.reset()
             # load data

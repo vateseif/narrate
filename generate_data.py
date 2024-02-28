@@ -19,7 +19,7 @@ def get_instruction(query:str, task:str):
     instruction += f"# Query: {query}"
     return instruction
 
-method = 'ours'
+method = 'ours_objective'
 tasks = ['Sponge']
 
 TP = LLM(LLMConfig("TP", "Sponge"))

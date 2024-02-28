@@ -20,7 +20,7 @@ class SimulationConfig(AbstractSimulaitonConfig):
   frame_distance: float = 1.3
   frame_yaw: int = -45
   frame_pitch: int = -30
-  method:str = 'ours'
+  method:str = 'ours_objective'
 
 
 class LLMConfig(AbstractLLMConfig):
