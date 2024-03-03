@@ -10,17 +10,17 @@ class SimulationConfig(AbstractSimulaitonConfig):
   logging_video: bool = True
   logging_video_fps: int = 5
   logging_video_frequency: int = 10
-  task: str = "Sponge"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "CookSteak"     # [Cubes, CleanPlate, Sponge, MoveTable]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
   frame_width: int = 1024
   frame_height: int = 1024
-  frame_target_position: List[float] = [0.0, 0., 0.]
-  frame_distance: float = 1.3
-  frame_yaw: int = -45
+  frame_target_position: List[float] = [0.0, -0.1, 0.]
+  frame_distance: float = 1.6
+  frame_yaw: int = -125
   frame_pitch: int = -30
-  method:str = 'ours_objective'
+  method:str = 'ours'
 
 
 class LLMConfig(AbstractLLMConfig):

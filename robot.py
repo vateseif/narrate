@@ -120,6 +120,7 @@ class Robot(AbstractRobot):
 				if i == 0:
 					query += "The previous optimization was not feasible. Please try again with a simpler formulation. You can assume the size of all objects is the same."
 				optimization = self.OD.run(self._get_instruction(query), short_history=True)
+				print(f"\33[92m {optimization} \033[0m \n")
 				if self.cfg.method == "objective":
 					optimization["equality_constraints"] = []
 					optimization["inequality_constraints"] = []

@@ -159,3 +159,5 @@ keys/
 *.db
 
 *.json
+
+cache/*

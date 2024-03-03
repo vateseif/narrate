@@ -180,19 +180,19 @@ Here are some general examples:
 objects = ['coffee pod 1', 'coffee pod 2', 'coffee machine']
 # Query: put the coffee pod into the coffee machine
 {
-  "tasks": ["left robot: move gripper to the coffee pod 1 and avoid collisions with the coffee machine. right robot: move gripper to the coffee pod 2 and avoid collisions with the coffee machine", "left robot: close_gripper(). right robot: do nothing", "left robot: move the gripper above the coffee machine. right robot: do nothing", "left robot: open_gripper(). right robot: do nothing", "left robot: move the gripper behind the coffee machine. right robot: move the robot above the coffee machine and avoid collisions with the coffee machine. keep the robots at a distance greater than 0.1m". "left robot: do nothing. right robot: open_gripper()"]
+  "tasks": ["left robot: move gripper to the coffee pod 1 and avoid collisions with coffe pod 1 and coffee machine. right robot: move gripper to the coffee pod 2 and avoid collisions with coffee pod 2 and coffee machine", "left robot: close_gripper(). right robot: do nothing", "left robot: move the gripper above the coffee machine. right robot: do nothing", "left robot: open_gripper(). right robot: do nothing", "left robot: move the gripper behind the coffee machine. right robot: move the robot above the coffee machine and avoid collisions with the coffee machine. keep the robots at a distance greater than 0.1m". "left robot: do nothing. right robot: open_gripper()"]
 }
 
 objects = ['rope left', 'rope right', 'rope']
 # Query: move the rope 0.1m to the left
 {
-  "tasks": ["left robot: move gripper to rope left. right robot: move gripper to rope left", "left robot: close_gripper(). right robot: close_gripper()", "left robot: move gripper 0.1m to the left. right robot: move gripper 0.1m to the left. keep the distance of the robots shorter than the length of the rope", "left robot: open_gripper(). right robot: open_gripper()"]
+  "tasks": ["left robot: move gripper to rope left and avoid collisions with it. right robot: move gripper to rope left and avoid collisions with it", "left robot: close_gripper(). right robot: close_gripper()", "left robot: move gripper 0.1m to the left. right robot: move gripper 0.1m to the left. keep the distance of the robots equal to their current distance", "left robot: open_gripper(). right robot: open_gripper()"]
 }
 
 objects = ['apple', 'drawer handle', 'drawer']
 # Query: put apple into the drawer.
 {
-  "tasks": ["left robot: move gripper to drawer handle and avoid collisions with apple and drawer. right robot: move gripper to the apple", "left robot: close_gripper(). right robot: close gripper.", "left robot: move gripper 0.25m in the y direction. right robot: do nothing.", "left robot: do nothing. right robot: move gripper above the drawer.", "left robot: do nothing. right robot: open_gripper()"]
+  "tasks": ["left robot: move gripper to drawer handle and avoid collisions with handle and drawer. right robot: move gripper to the apple and avoid collisions with apple", "left robot: close_gripper(). right robot: close gripper.", "left robot: move gripper 0.25m in the y direction. right robot: do nothing.", "left robot: do nothing. right robot: move gripper above the drawer.", "left robot: do nothing. right robot: open_gripper()"]
 }
 """
 
@@ -217,13 +217,12 @@ This is the scene description:
     (c) 'above' and 'below' for positive and negative z-axis directions.
 
 Rules:
-  (1) You MUST write every equality constraints such that it is satisfied if it is = 0:
+  (1) A robot MUST avoid colliding with an object if it is moving the gripper specifically to that object. You MUST do this even when not specified in the query.
+  (2) You MUST write every equality constraints such that it is satisfied if it is = 0:
     (a)  If you want to write "ca.norm_2(x_left) = 1" write it as  "1 - ca.norm_2(x_left)" instead.
-  (2) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
+  (3) You MUST write every inequality constraints such that it is satisfied if it is <= 0:
     (a)  If you want to write "ca.norm_2(x_right) >= 1" write it as  "1 - ca.norm_2(x_right)" instead. 
-  (3) You MUST avoid colliding with an object IFF a robot is moving the gripper specifically to that object. You MUST do this.
   (4) NEVER avoid collisions with an object you're not moving to or nearby if not specified in the query.
-  (4) Use `t` in the inequalities especially when you need to describe motions of the gripper.
 
 You must format your response into a json. Here are a few examples:
 
@@ -243,14 +242,14 @@ objects = ['red_cube', 'yellow_cube']
   "equality_constraints": [],
   "inequality_constraints": ["red_cube.size - ca.norm_2(x_left - red_cube.position)", "yellow_cube.size - ca.norm_2(x_left - yellow_cube.position)", "yellow_cube.size - ca.norm_2(x_right - yellow_cube.position)", "red_cube.size - ca.norm_2(x_right - red_cube.position)"]
 }
-Notice the collision avoidance constraint with the red_cube despite not being specified in the query because the gripper has to go to the red cube.
+Notice the collision avoidance constraint with the red_cube despite not being specified in the query because the left gripper has to go to the red cube.
 
 objects = ['coffee_pod', 'coffee_machine']
 # Query: left robot: move gripper above the coffe pod. right robot: move gripper above the coffe machine. keep the 2 grippers at a distance greater than 0.1m.
 {
   "objective": "ca.norm_2(x_left - (coffee_pod.position + np.array([0, 0, coffee_pod.size])))**2 + ca.norm_2(x_right - (coffee_machine.position + np.array([0, 0, coffee_machine.size])))**2",
   "equality_constraints": [],
-  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x_left - coffee_pod.position)", "coffee_machine.size - ca.norm_2(x_right - coffee_machine.position)", "0.1 - ca.norm_2(x_left - x_right)"]
+  "inequality_constraints": ["coffee_pod.size - ca.norm_2(x_left - coffee_pod.position)", "coffee_machine.size - ca.norm_2(x_right - coffee_machine.position)", "0.1**2 - ca.norm_2(x_left - x_right)**2"]
 }
 Notice that there's no collision avoidance constraint with the coffee_machine because it is not in the query and because gripper is not moving to or nearby it.
 
@@ -264,10 +263,10 @@ objects = ['mug']
 }
 
 objects = ['joystick', 'remote']
-# Query: left robot: Move the gripper at constant speed along the x axis. right robot: Move the gripper at constant speed along the x axis. Keep robot grippers at the same height.
+# Query: left robot: Move the gripper at constant speed along the x axis. right robot: Move the gripper at constant speed along the x axis. keep the distance of the robots equal to their current distance.
 {
   "objective": "ca.norm_2(x_left[0] - t)**2 + ca.norm_2(x_right[0] - t)**2",
-  "equality_constraints": ["x_left[2] - x_right[2]"],
+  "equality_constraints": ["ca.norm_2(x0_left-x0_right)**2 - ca.norm_2(x_left-x_right)**2"],
   "inequality_constraints": []
 }
 """
@@ -277,10 +276,12 @@ PROMPTS = {
         "Cubes": TP_PROMPT,
         "CleanPlate": TP_PROMPT,
         "Sponge": TP_PROMPT_COLLAB,
+        "CookSteak": TP_PROMPT_COLLAB,
     },
     "OD": {
         "Cubes": OD_PROMPT,
         "CleanPlate": OD_PROMPT,
         "Sponge": OD_PROMPT_COLLAB,
+        "CookSteak": OD_PROMPT_COLLAB,
     }
 }
