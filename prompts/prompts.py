@@ -271,6 +271,7 @@ objects = ['joystick', 'remote']
 }
 """
 
+
 PROMPTS = {
     "TP": {
         "Cubes": TP_PROMPT,
