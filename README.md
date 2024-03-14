@@ -2,9 +2,7 @@
 This repo contains a reference implementation of the paper [NARRATE](https://narrate-mpc.github.io). 
 We refer the reader to our project page to find the paper and details about the method.
 
-
-https://github.com/vateseif/l2o/assets/45405956/4c9b84e3-fd7d-4159-903d-232852029f7e
-
+https://github.com/vateseif/l2o/assets/45405956/7a685788-5d3e-4f34-b1e0-21bc76f2ce6a
 
 ## Setup
 ### Env
