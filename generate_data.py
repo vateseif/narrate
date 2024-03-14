@@ -27,7 +27,7 @@ tasks = ['CookSteak']#['stack', 'L', 'pyramid', 'CleanPlate', 'Sponge
 TP = LLM(LLMConfig("TP", "CookSteak"))
 OD = LLM(LLMConfig("OD", "CookSteak"))
 
-for i in range(3):
+for i in range(50):
     queries = [
         #"make a stack of cubes on top of the {} cube".format(*sample(colors, 1)),
         #"rearrange cubes to write the letter L flat on the table. keep {} at its location".format(*sample(colors, 1)),

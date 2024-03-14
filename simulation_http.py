@@ -56,6 +56,8 @@ class Simulation(AbstractSimulation):
         self.mpc_solve_times = []
         self.session = None
 
+        self.video_path = os.path.join(BASE_DIR, f"data/videos/{self.cfg.task}_{datetime.now()}_full.mp4")
+
         if self.cfg.logging:
             engine = create_engine(f'sqlite:///data/{self.cfg.method}/DBs/{cfg.task}.db')
             Base.metadata.create_all(engine)
@@ -187,12 +189,11 @@ class Simulation(AbstractSimulation):
             self.episode = Episode()  # Assuming Episode has other fields you might set
             self.session.add(self.episode)
             self.session.commit()
-            n_episodes = len(os.listdir(f"data/{self.cfg.method}/images"))
-            self.episode_folder = f"data/{self.cfg.method}/images/{n_episodes}"
-            os.mkdir(self.episode_folder)
-            self.video_path = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}_full.mp4")
-            self.video_path_logging = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}.mp4")
-        
+        n_episodes = len(os.listdir(f"data/{self.cfg.method}/images"))
+        self.episode_folder = f"data/{self.cfg.method}/images/{n_episodes}"
+        os.mkdir(self.episode_folder)
+        self.video_path_logging = os.path.join(BASE_DIR, f"data/{self.cfg.method}/videos/{self.cfg.task}_{n_episodes}.mp4")
+        self.video_path = os.path.join(BASE_DIR, f"data/videos/{self.cfg.task}_{datetime.now()}_full.mp4")
         # init list of RGB frames if wanna save video
         if self.save_video:
             self._save_video()
@@ -223,9 +224,7 @@ class Simulation(AbstractSimulation):
             self.env.visualize_trajectory(trajectory)
         # store RGB frames if wanna save video
         if self.save_video:
-            frame = np.array(self.env.render("rgb_array", width=self.cfg.frame_width, height=self.cfg.frame_height))
-            frame = frame.reshape(self.cfg.frame_width, self.cfg.frame_height, 4).astype(np.uint8)
-            self.frames_list.append(frame)
+            self.frames_list.append(self._retrieve_image())
 
         return done
 
@@ -248,7 +247,7 @@ class Simulation(AbstractSimulation):
         #sys.exit()  
 
     def _save_video(self):
-        for s, p, l in [(self.cfg.save_video, self.video_path, self.frames_list), (self.cfg.logging_video, self.video_path_logging, self.frames_list_logging)]:
+        for s, p, l in [(self.save_video, self.video_path, self.frames_list), (self.cfg.logging_video, self.video_path_logging, self.frames_list_logging)]:
             if not s: continue
             # Define the parameters
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -315,8 +314,8 @@ class Simulation(AbstractSimulation):
         return web.json_response({"response": "Optimizations uploaded"})
     
     async def http_save_recording(self, request):
-        self.save_video = False
         self._save_video()
+        self.save_video = False
         return web.json_response({"response": "Recording saved"})
     
     async def http_start_recording(self, request):      

@@ -286,8 +286,8 @@ class Simulation(AbstractSimulation):
             is_plan_unfinished = self.task_counter < len(self.plan["tasks"])
             task = self.plan["tasks"][self.task_counter] if is_plan_unfinished else "finished"
             optimization = self.optimizations[self.task_counter] if (self.optimizations and is_plan_unfinished)  else None
-            AI_response = self._solve_task(task, optimization)
-            if AI_response is not None: self.task_counter += 1
+            _ = self._solve_task(task, optimization)
+            self.task_counter += 1
             
             while self.robot.is_robot_busy():
                 self.step()
