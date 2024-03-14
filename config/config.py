@@ -4,13 +4,13 @@ from typing import List
 
 
 class SimulationConfig(AbstractSimulaitonConfig):
-  render: bool = False
+  render: bool = True
   debug: bool = False
-  logging: bool = True
-  logging_video: bool = True
+  logging: bool = False
+  logging_video: bool = False
   logging_video_fps: int = 5
   logging_video_frequency: int = 10
-  task: str = "CookSteak"     # [Cubes, CleanPlate, Sponge, MoveTable]
+  task: str = "Cubes"     # [Cubes, CleanPlate, Sponge, CookSteak]
   save_video: bool = False
   fps: int = 20 # only used if save_video = True
   dt: float = 0.05 # simulation timestep. Must be equal to that of controller
@@ -31,7 +31,7 @@ class LLMConfig(AbstractLLMConfig):
   model_name: str = "gpt-4-0125-preview"
   streaming: bool = False
   temperature: float = 0.9
-  max_tokens: int = 500
+  max_tokens: int = 1000
 
 
 class ControllerConfig(AbstractControllerConfig):
@@ -52,8 +52,8 @@ class RobotConfig(AbstractRobotConfig):
     self.task: str = task
   open_gripper_time: int = 28
   method: str = "optimization" # ['optimization', 'objective']
-  COST_THRESHOLD: float = 3e-5
-  COST_DIIFF_THRESHOLD: float = 5e-7
+  COST_THRESHOLD: float = 1e-5
+  COST_DIIFF_THRESHOLD: float = 1e-7
   GRIPPER_WIDTH_THRESHOLD: float = 4e-6
   TIME_THRESHOLD: float = 25
   MAX_OD_ATTEMPTS: int = 2
