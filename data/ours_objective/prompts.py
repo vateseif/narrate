@@ -237,10 +237,12 @@ PROMPTS = {
         "Cubes": TP_PROMPT,
         "CleanPlate": TP_PROMPT,
         "Sponge": TP_PROMPT_COLLAB,
+        "CookSteak": TP_PROMPT_COLLAB,
     },
     "OD": {
         "Cubes": OD_PROMPT,
         "CleanPlate": OD_PROMPT,
         "Sponge": OD_PROMPT_COLLAB,
+        "CookSteak": OD_PROMPT_COLLAB,
     }
 }
