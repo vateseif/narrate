@@ -1,5 +1,6 @@
-# Language to Optimization
-This section focuses on how to convert an instruction in English to reward and constraints of an optimization-based controller (Model Predictive Control)
+# NARRATE: Versatile Language Architeture for Optimal Control in Robotics
+This repo contains a reference implementation of the paper [NARRATE](https://narrate-mpc.github.io). 
+We refer the reader to our project page to find the paper and details about the method.
 
 
 https://github.com/vateseif/l2o/assets/45405956/4c9b84e3-fd7d-4159-903d-232852029f7e
@@ -7,10 +8,10 @@ https://github.com/vateseif/l2o/assets/45405956/4c9b84e3-fd7d-4159-903d-23285202
 
 ## Setup
 ### Env
-Create the conda env
+Create a python environment (i.e. with conda):
 ~~~
-conda create --name l2o python=3.9
-conda activate l2o
+conda create --name narrate python=3.9
+conda activate narrate
 ~~~
 ### Requirements
 Install requirements
@@ -21,6 +22,14 @@ pip install -r requirements.txt
 You need to create the file `keys/gpt4.key` and put your OpenAI key. Make sure to have acces to GPT4. 
 
 ## Run
+You will need to run 2 files in order to interact with the simulation environment.
+
+To start the chat interface you have to execute in your terminal:
 ~~~
 streamlit run main.py
+~~~
+
+To start the simulation you have to execute in your terminal
+~~~
+python simulation_http.py
 ~~~
