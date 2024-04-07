@@ -24,7 +24,7 @@ You will need to run 2 files in order to interact with the simulation environmen
 
 To start the chat interface you have to execute in your terminal:
 ~~~
-streamlit run main.py
+streamlit run gui.py
 ~~~
 
 To start the simulation you have to execute in your terminal
